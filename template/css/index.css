@@ -1,0 +1,97 @@
+  .row-file {
+    height: 40px;
+  }
+  
+  .column-icon {
+    width: 40px;
+    text-align: center;
+  }
+  
+  .column-name {
+  }
+  
+  .column-size {
+    width: 100px;
+    text-align: right;
+  }
+  
+  .column-move {
+    width: 40px;
+    text-align: center;
+  }
+  
+  .column-delete {
+    width: 40px;
+    text-align: center;
+  }
+  
+  .column-path {  
+  }
+  
+  .column-progress {
+    width: 200px;
+  }
+  
+  .footer {
+    color: #999;
+    text-align: center;
+    font-size: 0.9em;
+  }
+  
+  #reload {
+    float: right;
+  }
+  
+  #create-input {
+    width: 50%;
+    height: 20px;
+  }
+  
+  #move-input {
+    width: 80%;
+    height: 20px;
+  }
+  
+  /* Bootstrap overrides */
+  
+  .btn:focus {
+    outline: none; 
+  }
+  
+  .btn-toolbar {
+    margin-top: 30px;
+    margin-bottom: 20px;
+  }
+  
+  .table .progress {
+    margin-top: 0px;
+    margin-bottom: 0px;
+    height: 16px;
+  }
+  
+  .panel-default > .panel-heading {
+    color: #555;
+  }
+  
+  .breadcrumb {
+    background-color: transparent;
+    border-radius: 0px;
+    margin-bottom: 0px;
+    padding: 0px;
+  }
+  
+  .breadcrumb > .active {
+    color: #555;
+  }
+  
+  .breadcrumb > li + li:before {
+    color: #999;
+  }
+  
+  .table > tbody > tr > td {
+    vertical-align: middle;
+  }
+  
+  .table > tbody > tr > td > p {
+    margin: 0px;
+  }
