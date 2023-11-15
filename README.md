@@ -19,7 +19,11 @@ Device B: open `http://192.168.31.16:9999` and upload file
 - Transfers files via HTTP  
 - Provides a web page access method for file transfer  
 
-## Installation  
+## Installation 
+
+### Binaries on macOS, Linux, Windows
+
+Download from [Github Releases](https://github.com/sigoden/dufs/releases), unzip and add dufs to your $PATH.
 
 ### Build from Source  
 
