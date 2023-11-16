@@ -32,12 +32,29 @@ func getLocalIP() string {
 	if err != nil {
 		panic(err)
 	}
+	var ips []string
 	for _, address := range addrs {
 		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 			if ipnet.IP.To4() != nil {
-				return ipnet.IP.String()
+				ips = append(ips, ipnet.IP.String())
 			}
 		}
 	}
-	panic("get local ip failed")
+	if len(ips) == 0 {
+		panic("get local ip failed")
+	} else if len(ips) == 1 {
+		return ips[0]
+	} else {
+		// Select the one connected to the network
+		// when there are multiple network interfaces
+
+		// Is there a better way？
+		c, err := net.Dial("udp", "8.8.8.8:80")
+		if err != nil {
+			return ips[0]
+		}
+		defer c.Close()
+		return c.LocalAddr().(*net.UDPAddr).IP.String()
+	}
+
 }
