@@ -1,5 +1,9 @@
 # Simple Transfer
 
+![GitHub tag (with filter)](https://img.shields.io/github/v/tag/chyok/st)
+![GitHub License](https://img.shields.io/github/license/chyok/st)
+
+
 `st` is a command-line project written in Go for file transfer within a local network. Its working principle is based on multicast, where the sender discovers the host in the local network, and the receiver returns its IP address to the sender and initiates an HTTP service to receive files. The sender then transfers the file to the receiver via HTTP. Moreover, even if there's only a receiver, it can access the file transfer address via the prompted address, allowing file transfer through a webpage without the need to run a command on the sender's side.  
 
 ![example](https://github.com/chyok/st/assets/32629225/3f1b2a19-b84c-4c9a-8264-067e438aa58e)
