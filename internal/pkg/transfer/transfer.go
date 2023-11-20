@@ -26,11 +26,11 @@ func ReceiveFileHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		tmpl.Execute(w, config.G.DeviceName)
 	} else {
-		fmt.Println("Receving a file, downloading...")
 		file, header, err := r.FormFile("file")
+		fmt.Printf("Downloading [%s]...\r", header.Filename)
 		if err != nil {
 			http.Error(w, "Could not get file", http.StatusInternalServerError)
-			fmt.Println("Download file failed")
+			fmt.Printf("[X] Download [%s] Failed. \n", header.Filename)
 			return
 		}
 		defer file.Close()
@@ -39,17 +39,17 @@ func ReceiveFileHandler(w http.ResponseWriter, r *http.Request) {
 
 		if err != nil {
 			http.Error(w, "could not create file", http.StatusInternalServerError)
-			fmt.Println("Download file failed")
+			fmt.Printf("[X] Download [%s] Failed. \n", header.Filename)
 			return
 		}
 		defer out.Close()
 		_, err = io.Copy(out, file)
 		if err != nil {
 			http.Error(w, "could not write file", http.StatusInternalServerError)
-			fmt.Println("Download file failed")
+			fmt.Printf("[X] Download [%s] Failed. \n", header.Filename)
 			return
 		}
-		fmt.Println("Download succeeded")
+		fmt.Printf("[√] Download [%s] Success.  \n", header.Filename)
 	}
 }
 
