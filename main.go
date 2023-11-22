@@ -19,7 +19,7 @@ func sendFile(c *cli.Context) error {
 	go discovery.Listen(config.G.WildcardAddress)
 	go discovery.Send(config.G.MulticastAddress, config.G.DeviceName)
 
-	transfer.SendFile(filePath)
+	transfer.SendToAll(filePath)
 	return nil
 }
 
