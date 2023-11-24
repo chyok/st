@@ -9,6 +9,7 @@ import (
 	"github.com/chyok/st/internal/pkg/discovery"
 	"github.com/chyok/st/internal/pkg/transfer"
 	"github.com/chyok/st/template"
+	"github.com/skip2/go-qrcode"
 
 	"github.com/urfave/cli/v2"
 )
@@ -24,7 +25,10 @@ func sendFile(c *cli.Context) error {
 }
 
 func receiveFile(c *cli.Context) error {
-	fmt.Println("server address: http://" + config.G.LocalIP + ":" + config.G.Port)
+	address := fmt.Sprintf("http://%s:%s", config.G.LocalIP, config.G.Port)
+	q, _ := qrcode.New(address, qrcode.Low)
+	fmt.Println(q.ToSmallString(false))
+	fmt.Printf("Server address: %s \n", address)
 	fmt.Println("Waiting transfer...")
 	go discovery.Listen(config.G.MulticastAddress)
 	http.HandleFunc("/", transfer.ReceiveFileHandler)
