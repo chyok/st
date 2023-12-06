@@ -10,12 +10,12 @@ import (
 	"path/filepath"
 
 	"github.com/chyok/st/config"
-	"github.com/chyok/st/template"
+	"github.com/chyok/st/web"
 )
 
 func ReceiveFileHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		tmpl, err := tmp.New("index").Parse(template.UploadPage)
+		tmpl, err := tmp.New("index").Parse(web.UploadPage)
 		if err != nil {
 			w.Write(([]byte(fmt.Sprintf("create template failed, err: %s", err))))
 		}

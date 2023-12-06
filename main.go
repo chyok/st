@@ -8,7 +8,7 @@ import (
 	"github.com/chyok/st/config"
 	"github.com/chyok/st/internal/pkg/discovery"
 	"github.com/chyok/st/internal/pkg/transfer"
-	"github.com/chyok/st/template"
+	"github.com/chyok/st/web"
 	"github.com/skip2/go-qrcode"
 
 	"github.com/urfave/cli/v2"
@@ -33,7 +33,7 @@ func receiveFile(c *cli.Context) error {
 	go discovery.Listen(config.G.MulticastAddress)
 	http.HandleFunc("/", transfer.ReceiveFileHandler)
 	http.Handle("/static/", http.StripPrefix("/static/",
-		http.FileServer(http.FS(template.CssFs))))
+		http.FileServer(http.FS(web.CssFs))))
 	http.ListenAndServe(config.G.WildcardAddress, nil)
 	return nil
 }
