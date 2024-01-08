@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/chyok/st/config"
-	"github.com/chyok/st/internal/pkg/discovery"
+	"github.com/chyok/st/internal/discovery"
 	"github.com/schollz/progressbar/v3"
 )
 
