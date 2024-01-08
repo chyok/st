@@ -6,8 +6,8 @@ import (
 	"os"
 
 	"github.com/chyok/st/config"
-	"github.com/chyok/st/internal/pkg/discovery"
-	"github.com/chyok/st/internal/pkg/transfer"
+	"github.com/chyok/st/internal/discovery"
+	"github.com/chyok/st/internal/transfer"
 	"github.com/chyok/st/web"
 	"github.com/skip2/go-qrcode"
 
