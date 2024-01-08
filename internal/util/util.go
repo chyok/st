@@ -1,11 +1,7 @@
 package util
 
 import (
-	"context"
-	"fmt"
 	"net"
-	"strings"
-	"time"
 )
 
 func In[T comparable](v T, arr []T) bool {
@@ -15,22 +11,6 @@ func In[T comparable](v T, arr []T) bool {
 		}
 	}
 	return false
-}
-
-func PrintWaitDots(ctx context.Context, waitMessage string) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			fmt.Print(waitMessage)
-			for i := 0; i < 3; i++ {
-				fmt.Print(".")
-				time.Sleep(time.Microsecond * 500)
-			}
-			fmt.Printf("/r%s/r", strings.Repeat(" ", len(waitMessage)+3))
-		}
-	}
 }
 
 func GetLocalIPs() ([]string, error) {
