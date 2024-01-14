@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/chyok/st/config"
-	"github.com/chyok/st/internal/util"
 )
 
 var discoveredIPs = make(map[string]string)
@@ -70,11 +69,7 @@ func Listen(address string) {
 		}
 
 		ip := src.IP.String()
-		ips, err := util.GetLocalIPs()
-		if err != nil {
-			panic(err)
-		}
-		if util.In(ip, ips) {
+		if config.G.LocalIP == ip {
 			continue
 		}
 		msgs := strings.Split(string(buf[0:n]), "|")
