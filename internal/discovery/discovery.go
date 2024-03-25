@@ -5,89 +5,77 @@ import (
 	"net"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/chyok/st/config"
+	"github.com/chyok/st/internal/transfer"
 )
 
-var discoveredIPs = make(map[string]string)
-var DiscoveredIPChan = make(chan [2]string)
-var timestamps = make(map[string]bool)
+const separator = "|"
 
-func GetDiscoveredIPs() map[string]string {
-	return discoveredIPs
-}
+type Role string
 
-func Send(address string, message string) error {
-	timeUnixNano := time.Now().UnixNano()
-	timestamp := strconv.Itoa(int(timeUnixNano))
-	for i := 0; i < 3; i++ {
-		addr, err := net.ResolveUDPAddr("udp", address)
-		if err != nil {
-			panic(err)
-		}
+const (
+	Sender   Role = "sender"
+	Receiver Role = "receiver"
+)
 
-		conn, err := net.DialUDP("udp", nil, addr)
-		if err != nil {
-			panic(err)
-		}
-		defer conn.Close()
-		_, err = conn.Write([]byte(message + "|" + timestamp))
-		if err != nil {
-			panic(err)
-		}
-		time.Sleep(time.Millisecond * 500)
-	}
-	return nil
-
-}
-
-func Listen(address string) {
-	addr, err := net.ResolveUDPAddr("udp", address)
+// Listen 监听发现广播
+func Listen(role Role, filePath string) {
+	conn, err := net.ListenPacket("udp", config.G.MulticastAddress)
 	if err != nil {
-		panic(err)
-	}
-
-	var conn *net.UDPConn
-	var e error
-
-	if addr.IP.IsMulticast() {
-		conn, e = net.ListenMulticastUDP("udp", nil, addr)
-	} else {
-		conn, e = net.ListenUDP("udp", addr)
-	}
-	if e != nil {
-		panic(e)
+		fmt.Printf("Failed to listen on %s: %v\n", config.G.MulticastAddress, err)
+		return
 	}
 	defer conn.Close()
 
 	buf := make([]byte, 1024)
 	for {
-		n, src, err := conn.ReadFromUDP(buf)
+		n, remoteAddr, err := conn.ReadFrom(buf)
 		if err != nil {
-			panic(err)
-		}
-
-		ip := src.IP.String()
-		if config.G.LocalIP == ip {
+			fmt.Printf("Failed to read from %s: %v\n", remoteAddr, err)
 			continue
 		}
-		msgs := strings.Split(string(buf[0:n]), "|")
-		device, timestamp := msgs[0], msgs[1]
 
-		if _, ok := discoveredIPs[ip]; !ok {
-			fmt.Println("Find device [" + device + "] on " + ip)
-			discoveredIPs[ip] = device
+		message := string(buf[:n])
+		parts := strings.Split(message, separator)
+		if len(parts) != 2 {
+			fmt.Printf("Received malformed message from %s: %s\n", remoteAddr, message)
+			continue
 		}
 
-		if _, ok := timestamps[timestamp]; !ok {
-			timestamps[timestamp] = true
-			if addr.IP.IsMulticast() {
-				go Send(ip+":"+config.G.Port, config.G.DeviceName)
-			} else {
-				DiscoveredIPChan <- [2]string{device, ip}
+		deviceName := parts[0]
+		remoteRole := Role(parts[1])
+
+		fmt.Printf("Discovered device: %s (%s)\n", deviceName, remoteAddr)
+
+		switch remoteRole {
+		case Sender:
+			if role == Receiver {
+				go transfer.ReceiveFile(remoteAddr.String(), filePath)
+			}
+		case Receiver:
+			if role == Sender {
+				go transfer.SendFile(filePath, remoteAddr.String())
 			}
 		}
-
 	}
+}
+
+// Send 发送发现广播
+func Send(role Role) {
+	port, _ := strconv.Atoi(config.G.Port)
+
+	conn, err := net.DialUDP("udp", nil, &net.UDPAddr{
+		IP:   net.ParseIP(config.G.MulticastAddress),
+		Port: port,
+	})
+	if err != nil {
+		fmt.Printf("Failed to dial %s: %v\n", config.G.MulticastAddress, err)
+		return
+	}
+	defer conn.Close()
+
+	message := fmt.Sprintf("%s%s%s", config.G.DeviceName, separator, role)
+	conn.Write([]byte(message))
+	fmt.Printf("Sent discovery message: %s\n", message)
 }
