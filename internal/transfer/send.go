@@ -3,6 +3,7 @@ package transfer
 import (
 	"bytes"
 	"fmt"
+	"html/template"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -11,10 +12,69 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/chyok/st/config"
+	"github.com/chyok/st/web"
 	"github.com/schollz/progressbar/v3"
 )
 
-// SendFile 发送单个文件
+func SendHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		serveDownloadPage(w, r)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+func serveDownloadPage(w http.ResponseWriter, r *http.Request) {
+	path := config.G.FilePath
+
+	// if path == "/" {
+	// 	path = ""
+	// } else {
+	// 	path = path[1:]
+	// }
+
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	data := struct {
+		DeviceName string
+		IsDir      bool
+		DirName    string
+		FileName   string
+		Files      []os.DirEntry
+	}{
+		DeviceName: config.G.DeviceName,
+	}
+
+	if fileInfo.IsDir() {
+		data.IsDir = true
+		data.DirName = filepath.Base(path)
+
+		files, err := os.ReadDir(path)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		data.Files = files
+	} else {
+		data.FileName = filepath.Base(path)
+	}
+
+	tmpl, err := template.New("download").Parse(web.DownloadPage)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func SendFile(filePath string, url string) error {
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
@@ -31,7 +91,6 @@ func SendFile(filePath string, url string) error {
 	return postFile(filePath, path.Base(filePath), url)
 }
 
-// SendDirectory 发送目录
 func SendDirectory(dirPath string, url string) error {
 	var files []string
 	filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
