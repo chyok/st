@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>File Transfer</title>
+    <link rel="stylesheet" href="/static/bootstrap.css">
+    <link rel="stylesheet" href="/static/index.css">
+</head>
+<body>
+    <div class="container">
+        <h1>{{ .DeviceName }}</h1>
+        <hr>
+        {{ if .IsDir }}
+        <h2>Files in {{ .DirName }}</h2>
+        <ul>
+            {{ range .Files }}
+            <li>
+                {{ if .IsDir }}
+                <a href="/{{ .Name }}">{{ .Name }}</a>
+                {{ else }}
+                {{ .Name }} <a href="/download/{{ .Name }}" class="btn btn-primary btn-sm">Download</a>
+                {{ end }}
+            </li>
+            {{ end }}
+        </ul>
+        {{ else }}
+        <h2>Download {{ .FileName }}</h2>
+        <a href="/download/{{ .FileName }}" class="btn btn-primary">Download</a>
+        {{ end }}
+    </div>
+</body>
+</html>

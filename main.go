@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path/filepath"
 
 	"github.com/chyok/st/config"
 	"github.com/chyok/st/internal/discovery"
@@ -15,8 +14,7 @@ import (
 )
 
 var (
-	port     string
-	filePath string
+	port string
 )
 
 func initConfig(c *cli.Context) error {
@@ -26,7 +24,7 @@ func initConfig(c *cli.Context) error {
 
 func sendFile(c *cli.Context) error {
 	go discovery.Send(discovery.Sender)
-	go discovery.Listen(discovery.Receiver, filePath)
+	go discovery.Listen(discovery.Receiver, config.G.FilePath)
 
 	url := fmt.Sprintf("http://%s:%s", config.G.LocalIP, config.G.Port)
 	q, err := qrcode.New(url, qrcode.Low)
@@ -36,9 +34,12 @@ func sendFile(c *cli.Context) error {
 	fmt.Println(q.ToSmallString(false))
 	fmt.Printf("Server address: %s\n", url)
 
-	http.HandleFunc("/"+filepath.Base(filePath), func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filePath)
-	})
+	http.HandleFunc("/", transfer.SendHandler)
+	http.HandleFunc("/download/", transfer.DownloadFileHandler)
+
+	// http.HandleFunc("/"+filepath.Base(filePath), func(w http.ResponseWriter, r *http.Request) {
+	// 	http.ServeFile(w, r, filePath)
+	// })
 
 	return http.ListenAndServe(config.G.WildcardAddress, nil)
 }
@@ -63,31 +64,32 @@ func receiveFile(c *cli.Context) error {
 }
 
 func main() {
-	app := cli.NewApp()
-	app.Flags = []cli.Flag{
-		&cli.StringFlag{
-			Name:        "port",
-			Value:       "9999",
-			Destination: &port,
-			Usage:       "Server port",
+	app := &cli.App{
+		Name:      "st",
+		Usage:     "simple file transfer tool",
+		UsageText: "st [global options] [filename]",
+		Description: "if file name provided, it will attempt to send files to all servers\n" +
+			"else become the server and wait to receive the file",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:        "port",
+				Value:       "9999",
+				Usage:       "server port",
+				Aliases:     []string{"p"},
+				Destination: &port,
+			},
 		},
-		&cli.StringFlag{
-			Name:        "file",
-			Destination: &filePath,
-			Usage:       "File or directory to send",
-		},
-	}
-	app.Before = initConfig
-	app.Action = func(c *cli.Context) error {
-		if filePath != "" {
-			return sendFile(c)
-		} else {
+		Action: func(c *cli.Context) error {
+			if c.NArg() > 0 {
+				config.G.FilePath = c.Args().Get(0)
+				return sendFile(c)
+			}
 			return receiveFile(c)
-		}
+		},
+		Before: initConfig,
 	}
-
 	err := app.Run(os.Args)
 	if err != nil {
-		fmt.Println(err)
+		panic(err)
 	}
 }

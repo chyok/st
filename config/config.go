@@ -11,6 +11,7 @@ type Config struct {
 	LocalIP          string
 	MulticastAddress string
 	WildcardAddress  string
+	FilePath         string
 }
 
 var G Config
@@ -25,6 +26,7 @@ func (c *Config) SetConf(port string) {
 	c.LocalIP = getLocalIP()
 	c.MulticastAddress = "224.0.0.1" + ":" + port
 	c.WildcardAddress = "0.0.0.0" + ":" + port
+	c.FilePath = ""
 }
 
 func getLocalIP() string {

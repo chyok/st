@@ -14,7 +14,6 @@ import (
 	"github.com/chyok/st/web"
 )
 
-// ReceiveHandler 处理文件上传请求
 func ReceiveHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -24,6 +23,11 @@ func ReceiveHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func DownloadFileHandler(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path[len("/download/"):]
+	http.ServeFile(w, r, path)
 }
 
 func ReceiveFile(remoteAddr, savePath string) error {
