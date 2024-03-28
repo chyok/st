@@ -22,7 +22,7 @@ func initConfig(c *cli.Context) error {
 	return nil
 }
 
-func sendFile(c *cli.Context) error {
+func sendFile(_ *cli.Context) error {
 	go discovery.Send(discovery.Sender)
 	go discovery.Listen(discovery.Receiver, config.G.FilePath)
 
@@ -36,10 +36,6 @@ func sendFile(c *cli.Context) error {
 
 	http.HandleFunc("/", transfer.SendHandler)
 	http.HandleFunc("/download/", transfer.DownloadFileHandler)
-
-	// http.HandleFunc("/"+filepath.Base(filePath), func(w http.ResponseWriter, r *http.Request) {
-	// 	http.ServeFile(w, r, filePath)
-	// })
 
 	return http.ListenAndServe(config.G.WildcardAddress, nil)
 }
