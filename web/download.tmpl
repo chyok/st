@@ -2,29 +2,77 @@
 <html>
 <head>
     <title>File Transfer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/static/bootstrap.css">
     <link rel="stylesheet" href="/static/index.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            color: #343a40;
+            text-align: center;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            padding: 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        li:last-child {
+            border-bottom: none;
+        }
+        a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        a:hover {
+            color: #0056b3;
+            text-decoration: underline;
+        }
+        .btn {
+            float: right;
+            margin-left: 10px;
+        }
+        @media (max-width: 576px) {
+            .btn {
+                float: none;
+                margin-top: 10px;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <h1>{{ .DeviceName }}</h1>
         <hr>
         {{ if .IsDir }}
-        <h2>Files in {{ .CurrentPath }}</h2>
-        <ul>
-            {{ range .Files }}
-            <li>
-                {{ if .IsDir }}
-                <a href="{{ $.UrlPath }}{{ .Name }}">{{ .Name }}</a>
-                {{ else }}
-                {{ .Name }} <a href="/download/{{ $.CurrentPath }}/{{ .Name }}" class="btn btn-primary btn-sm">Download</a>
+            <h2>Files in {{ .CurrentPath }}</h2>
+            <ul>
+                {{ range .Files }}
+                    <li>
+                        {{ if .IsDir }}
+                            <a href="{{ $.UrlPath }}{{ .Name }}">{{ .Name }}</a>
+                        {{ else }}
+                            {{ .Name }}
+                            <a href="/download/{{ $.CurrentPath }}/{{ .Name }}" class="btn btn-primary btn-sm" download>Download</a>
+                        {{ end }}
+                    </li>
                 {{ end }}
-            </li>
-            {{ end }}
-        </ul>
+            </ul>
         {{ else }}
-        <h2>Download {{ .FileName }}</h2>
-        <a href="/download/{{ .CurrentPath }}/{{ .FileName }}" class="btn btn-primary">Download</a>
+            <h2>Download {{ .FileName }}</h2>
+            <a href="/download/{{ .CurrentPath }}/{{ .FileName }}" class="btn btn-primary" download>Download</a>
         {{ end }}
     </div>
 </body>
