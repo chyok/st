@@ -44,7 +44,7 @@ func sendFile(c *cli.Context) error {
 	return http.ListenAndServe(config.G.WildcardAddress, nil)
 }
 
-func receiveFile(c *cli.Context) error {
+func receiveFile(_ *cli.Context) error {
 	go discovery.Send(discovery.Receiver)
 	go discovery.Listen(discovery.Sender, "")
 

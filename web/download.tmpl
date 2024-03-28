@@ -10,21 +10,21 @@
         <h1>{{ .DeviceName }}</h1>
         <hr>
         {{ if .IsDir }}
-        <h2>Files in {{ .DirName }}</h2>
+        <h2>Files in {{ .CurrentPath }}</h2>
         <ul>
             {{ range .Files }}
             <li>
                 {{ if .IsDir }}
-                <a href="/{{ .Name }}">{{ .Name }}</a>
+                <a href="{{ $.UrlPath }}{{ .Name }}">{{ .Name }}</a>
                 {{ else }}
-                {{ .Name }} <a href="/download/{{ .Name }}" class="btn btn-primary btn-sm">Download</a>
+                {{ .Name }} <a href="/download/{{ $.CurrentPath }}/{{ .Name }}" class="btn btn-primary btn-sm">Download</a>
                 {{ end }}
             </li>
             {{ end }}
         </ul>
         {{ else }}
         <h2>Download {{ .FileName }}</h2>
-        <a href="/download/{{ .FileName }}" class="btn btn-primary">Download</a>
+        <a href="/download/{{ .CurrentPath }}/{{ .FileName }}" class="btn btn-primary">Download</a>
         {{ end }}
     </div>
 </body>

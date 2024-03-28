@@ -26,42 +26,41 @@ func SendHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func serveDownloadPage(w http.ResponseWriter, r *http.Request) {
-	path := config.G.FilePath
-
-	// if path == "/" {
-	// 	path = ""
-	// } else {
-	// 	path = path[1:]
-	// }
-
-	fileInfo, err := os.Stat(path)
+	urlPath := r.URL.Path
+	currentPath := config.G.FilePath
+	if urlPath != "/" {
+		currentPath = filepath.Join(currentPath, urlPath[1:])
+	}
+	fileInfo, err := os.Stat(currentPath)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	data := struct {
-		DeviceName string
-		IsDir      bool
-		DirName    string
-		FileName   string
-		Files      []os.DirEntry
+		DeviceName  string
+		IsDir       bool
+		FileName    string
+		CurrentPath string
+		UrlPath     string
+		Files       []os.DirEntry
 	}{
-		DeviceName: config.G.DeviceName,
+		DeviceName:  config.G.DeviceName,
+		CurrentPath: currentPath,
+		UrlPath:     urlPath,
 	}
 
 	if fileInfo.IsDir() {
 		data.IsDir = true
-		data.DirName = filepath.Base(path)
 
-		files, err := os.ReadDir(path)
+		files, err := os.ReadDir(currentPath)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		data.Files = files
 	} else {
-		data.FileName = filepath.Base(path)
+		data.FileName = filepath.Base(currentPath)
 	}
 
 	tmpl, err := template.New("download").Parse(web.DownloadPage)
