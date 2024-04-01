@@ -3,7 +3,6 @@ package discovery
 import (
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 
 	"github.com/chyok/st/config"
@@ -19,9 +18,14 @@ const (
 	Receiver Role = "receiver"
 )
 
-// Listen 监听发现广播
 func Listen(role Role, filePath string) {
-	conn, err := net.ListenPacket("udp", config.G.MulticastAddress)
+	addr, err := net.ResolveUDPAddr("udp", config.G.MulticastAddress)
+
+	if err != nil {
+		fmt.Printf("Failed to resolve %s: %v\n", config.G.MulticastAddress, err)
+		return
+	}
+	conn, err := net.ListenMulticastUDP("udp", nil, addr)
 	if err != nil {
 		fmt.Printf("Failed to listen on %s: %v\n", config.G.MulticastAddress, err)
 		return
@@ -30,7 +34,10 @@ func Listen(role Role, filePath string) {
 
 	buf := make([]byte, 1024)
 	for {
-		n, remoteAddr, err := conn.ReadFrom(buf)
+		n, src, err := conn.ReadFromUDP(buf)
+
+		remoteAddr := src.IP.String() + ":" + config.G.Port
+
 		if err != nil {
 			fmt.Printf("Failed to read from %s: %v\n", remoteAddr, err)
 			continue
@@ -45,30 +52,40 @@ func Listen(role Role, filePath string) {
 
 		deviceName := parts[0]
 		remoteRole := Role(parts[1])
-
-		fmt.Printf("Discovered device: %s (%s)\n", deviceName, remoteAddr)
-
 		switch remoteRole {
 		case Sender:
-			if role == Receiver {
-				go transfer.ReceiveFile(remoteAddr.String(), filePath)
+			if role == Sender {
+				continue
+				// fmt.Printf("Discovered Sender: %s (%s)\n", deviceName, remoteAddr)
+				// go func() {
+				// 	err := transfer.ReceiveFile(filePath, remoteAddr)
+				// 	if err != nil {
+				// 		fmt.Printf("Receive file from %s error: %s\n", remoteAddr, err)
+				// 	}
+				// }()
 			}
 		case Receiver:
-			if role == Sender {
-				go transfer.SendFile(filePath, remoteAddr.String())
+			if role == Receiver {
+				fmt.Printf("Discovered Receiver: %s (%s)\n", deviceName, remoteAddr)
+				go func() {
+					err := transfer.SendFile(filePath, fmt.Sprintf("http://%s", remoteAddr))
+					if err != nil {
+						fmt.Printf("Send file to %s error: %s\n", remoteAddr, err)
+					}
+				}()
 			}
 		}
 	}
 }
 
-// Send 发送发现广播
 func Send(role Role) {
-	port, _ := strconv.Atoi(config.G.Port)
+	addr, err := net.ResolveUDPAddr("udp", config.G.MulticastAddress)
+	if err != nil {
+		fmt.Printf("Failed to resolve %s: %v\n", config.G.MulticastAddress, err)
+		return
+	}
 
-	conn, err := net.DialUDP("udp", nil, &net.UDPAddr{
-		IP:   net.ParseIP(config.G.MulticastAddress),
-		Port: port,
-	})
+	conn, err := net.DialUDP("udp", nil, addr)
 	if err != nil {
 		fmt.Printf("Failed to dial %s: %v\n", config.G.MulticastAddress, err)
 		return

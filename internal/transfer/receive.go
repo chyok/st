@@ -30,8 +30,8 @@ func DownloadFileHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, path)
 }
 
-func ReceiveFile(remoteAddr, savePath string) error {
-	resp, err := http.Get(fmt.Sprintf("http://%s/upload", remoteAddr))
+func ReceiveFile(savePath, remoteAddr string) error {
+	resp, err := http.Get(fmt.Sprintf("http://%s/download", remoteAddr))
 	if err != nil {
 		return err
 	}
