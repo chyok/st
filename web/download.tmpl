@@ -1,79 +1,113 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>File Transfer</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/static/bootstrap.css">
-    <link rel="stylesheet" href="/static/index.css">
-    <style>
-        body {
-            background-color: #f8f9fa;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        h1, h2 {
-            color: #343a40;
-            text-align: center;
-        }
-        ul {
-            list-style-type: none;
-            padding: 0;
-        }
-        li {
-            padding: 10px;
-            border-bottom: 1px solid #dee2e6;
-        }
-        li:last-child {
-            border-bottom: none;
-        }
-        a {
-            color: #007bff;
-            text-decoration: none;
-        }
-        a:hover {
-            color: #0056b3;
-            text-decoration: underline;
-        }
-        .btn {
-            float: right;
-            margin-left: 10px;
-        }
-        @media (max-width: 576px) {
-            .btn {
-                float: none;
-                margin-top: 10px;
-            }
-        }
-    </style>
+  <title>File Transfer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #fff;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1, h2 {
+      text-align: center;
+      color: #333;
+      font-size: 2rem;
+    }
+
+    ul {
+      list-style-type: none;
+      padding: 0;
+    }
+
+    li {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      align-items: center;
+      font-size: 1.2rem;
+    }
+
+    li:last-child {
+      border-bottom: none;
+    }
+
+    a {
+      text-decoration: none;
+      color: #333;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 8px 16px;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: auto;
+    }
+
+    .btn:hover {
+      background-color: #0056b3;
+    }
+
+    .folder-icon {
+      width: 24px;
+      height: 24px;
+      margin-right: 10px;
+    }
+
+    .file-icon {
+      width: 24px;
+      height: 24px;
+      margin-right: 10px;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 10px;
+      }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>{{ .DeviceName }}</h1>
-        <hr>
-        {{ if .IsDir }}
-            <h2>Files in {{ .CurrentPath }}</h2>
-            <ul>
-                {{ range .Files }}
-                    <li>
-                        {{ if .IsDir }}
-                            <a href="{{ $.UrlPath }}{{ .Name }}">{{ .Name }}</a>
-                        {{ else }}
-                            {{ .Name }}
-                            <a href="/download/{{ $.CurrentPath }}/{{ .Name }}" class="btn btn-primary btn-sm" download>Download</a>
-                        {{ end }}
-                    </li>
-                {{ end }}
-            </ul>
-        {{ else }}
-            <h2>Download {{ .FileName }}</h2>
-            <a href="/download/{{ .CurrentPath }}/{{ .FileName }}" class="btn btn-primary" download>Download</a>
+  <div class="container">
+    <h1>{{ .DeviceName }}</h1>
+    <hr>
+    {{ if .IsDir }}
+      <h2>{{ .CurrentPath }}</h2>
+      <ul>
+        {{ range .Files }}
+          <li>
+            {{ if .IsDir }}
+              <svg class="folder-icon" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6H12L10 4Z" />
+              </svg>
+              <a href="{{ $.UrlPath }}{{ .Name }}">{{ .Name }}</a>
+            {{ else }}
+              <svg class="file-icon" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2M13 9V3.5L18.5 9H13Z" />
+              </svg>
+              {{ .Name }} <a href="/download/{{ $.CurrentPath }}/{{ .Name }}" class="btn" download>Download</a>
+            {{ end }}
+          </li>
         {{ end }}
-    </div>
+      </ul>
+    {{ else }}
+      <h2>Download {{ .FileName }}</h2>
+      <a href="/download/{{ .CurrentPath }}/{{ .FileName }}" class="btn" download>Download</a>
+    {{ end }}
+  </div>
 </body>
 </html>
