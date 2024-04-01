@@ -25,6 +25,7 @@ func SendHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
+
 func serveDownloadPage(w http.ResponseWriter, r *http.Request) {
 	urlPath := r.URL.Path
 	currentPath := config.G.FilePath
