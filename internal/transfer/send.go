@@ -125,6 +125,7 @@ func SendDirectory(dirPath string, url string) error {
 			return err
 		}
 	}
+	fmt.Printf("Send folder %s success.\n", dirPath)
 	return nil
 }
 
