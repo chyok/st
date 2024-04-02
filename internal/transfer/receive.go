@@ -26,8 +26,21 @@ func ReceiveHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func DownloadFileHandler(w http.ResponseWriter, r *http.Request) {
+	currentPath := config.G.FilePath
 	path := r.URL.Path[len("/download/"):]
-	http.ServeFile(w, r, path)
+
+	fileInfo, err := os.Stat(currentPath)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if fileInfo.IsDir() {
+		fullPath := filepath.Join(currentPath, path)
+		http.ServeFile(w, r, fullPath)
+	} else {
+		http.ServeFile(w, r, currentPath)
+	}
 }
 
 func ReceiveFile(savePath, remoteAddr string) error {
