@@ -29,8 +29,17 @@ func SendHandler(w http.ResponseWriter, r *http.Request) {
 func serveDownloadPage(w http.ResponseWriter, r *http.Request) {
 	urlPath := r.URL.Path
 	currentPath := config.G.FilePath
+	currentPath = filepath.ToSlash(currentPath)
+
+	basePath := filepath.Base(currentPath)
+
+	if strings.HasSuffix(currentPath, "/") {
+		basePath = filepath.Base(strings.TrimSuffix(currentPath, "/"))
+	}
+
 	if urlPath != "/" {
 		currentPath = filepath.Join(currentPath, urlPath[1:])
+		basePath = filepath.Join(currentPath, urlPath[1:])
 	}
 	fileInfo, err := os.Stat(currentPath)
 	if err != nil {
@@ -43,10 +52,12 @@ func serveDownloadPage(w http.ResponseWriter, r *http.Request) {
 		IsDir       bool
 		FileName    string
 		CurrentPath string
+		BasePath    string
 		UrlPath     string
 		Files       []os.DirEntry
 	}{
 		DeviceName:  config.G.DeviceName,
+		BasePath:    basePath,
 		CurrentPath: currentPath,
 		UrlPath:     urlPath,
 	}
