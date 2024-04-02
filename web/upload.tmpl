@@ -26,7 +26,11 @@
       <div class="btn btn-primary fileinput-button">  
         Upload files  
         <input id="fileupload" type="file" name="files[]" multiple>  
-      </div>  
+      </div> 
+      <div class="btn btn-primary fileinput-button">
+        Upload folder
+        <input id="folderupload" type="file" name="folders[]" directory multiple webkitdirectory>
+      </div>
     </div>  
   
     <div class="panel panel-default">  
@@ -99,7 +103,32 @@
       ajax.open("POST", "/", true);  
       ajax.send(formData);  
     }  
-  </script>  
+    var folderInput = document.getElementById('folderupload');
+
+folderInput.addEventListener('change', function(e) {
+  handleFiles(e.target.files);
+});
+
+function handleFiles(files) {
+  for (var i = 0; i < files.length; i++) {
+    var file = files[i];
+    if (file.webkitRelativePath) {
+      var parts = file.webkitRelativePath.split('/');
+      var fileName = parts.pop();
+      var folderPath = parts.join('/');
+      var row = document.createElement('tr');
+      row.innerHTML = '<td class="column-path"><p>' + folderPath + '/' + fileName + '</p></td><td class="column-progress"><div class="progress"><div class="progress-bar" style="width: 0%;"></div></div></td>';
+      uploads.appendChild(row);
+      uploadFile(file, row);
+    } else {
+      var row = document.createElement('tr');
+      row.innerHTML = '<td class="column-path"><p>' + file.name + '</p></td><td class="column-progress"><div class="progress"><div class="progress-bar" style="width: 0%;"></div></div></td>';
+      uploads.appendChild(row);
+      uploadFile(file, row);
+    }
+  }
+}
+</script>  
   
 </body>  
   
