@@ -27,7 +27,7 @@ func ReceiveHandler(w http.ResponseWriter, r *http.Request) {
 
 func DownloadFileHandler(w http.ResponseWriter, r *http.Request) {
 	currentPath := config.G.FilePath
-	path := r.URL.Path[len("/download/"):]
+	currentPath = filepath.ToSlash(currentPath)
 
 	fileInfo, err := os.Stat(currentPath)
 	if err != nil {
@@ -35,7 +35,9 @@ func DownloadFileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	basePath := filepath.Base(currentPath)
 	if fileInfo.IsDir() {
+		path := r.URL.Path[len("/download/"+basePath):]
 		fullPath := filepath.Join(currentPath, path)
 		http.ServeFile(w, r, fullPath)
 	} else {
