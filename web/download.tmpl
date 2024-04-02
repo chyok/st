@@ -19,6 +19,10 @@
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
 
+    .center {
+      text-align: center;
+    }
+
     h1, h2 {
       text-align: center;
       color: #333;
@@ -105,8 +109,8 @@
         {{ end }}
       </ul>
     {{ else }}
-      <h2>Download {{ .FileName }}</h2>
-      <a href="/download/{{ .CurrentPath }}/{{ .FileName }}" class="btn" download>Download</a>
+      <h2>{{ .FileName }}</h2>
+      <div class="center"><a href="/download/{{ .CurrentPath }}/{{ .FileName }}" class="btn" download>Download</a></div>
     {{ end }}
   </div>
 </body>
