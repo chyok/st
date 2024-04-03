@@ -27,7 +27,6 @@ func ReceiveHandler(w http.ResponseWriter, r *http.Request) {
 
 func DownloadFileHandler(w http.ResponseWriter, r *http.Request) {
 	currentPath := config.G.FilePath
-	currentPath = filepath.ToSlash(currentPath)
 
 	fileInfo, err := os.Stat(currentPath)
 	if err != nil {
