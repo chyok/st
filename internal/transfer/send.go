@@ -2,6 +2,7 @@ package transfer
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
@@ -21,9 +22,41 @@ func SendHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		serveDownloadPage(w, r)
+	case http.MethodPost:
+		handleFilePaths(w, r)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func handleFilePaths(w http.ResponseWriter, _ *http.Request) {
+	currentPath := config.G.FilePath
+	fileInfo, err := os.Stat(currentPath)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var resp struct {
+		Type  string   `json:"type"`
+		Paths []string `json:"paths"`
+	}
+
+	files, err := getFilePaths(currentPath, true)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	resp.Paths = files
+
+	if fileInfo.IsDir() {
+		resp.Type = "dir"
+	} else {
+		resp.Type = "file"
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func serveDownloadPage(w http.ResponseWriter, r *http.Request) {
@@ -102,23 +135,31 @@ func SendFile(filePath string, url string) error {
 	return postFile(filePath, path.Base(filePath), url)
 }
 
-func listDirFilePaths(dirPath string) ([]string, error) {
-	var files []string
-	filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+func getFilePaths(dirPath string, relativeOnly bool) ([]string, error) {
+	var filePaths []string
+	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 		if !info.IsDir() {
-			files = append(files, path)
+			if relativeOnly {
+				fileName := filepath.Base(path)
+				relativePath := filepath.Join(filepath.Base(dirPath), fileName)
+				filePaths = append(filePaths, relativePath)
+			} else {
+				filePaths = append(filePaths, path)
+			}
 		}
 		return nil
 	})
-
-	if len(files) == 0 {
-		return nil, fmt.Errorf("folder %s is empty", dirPath)
+	if err != nil {
+		return nil, err
 	}
-	return files, nil
+	return filePaths, nil
 }
 
 func SendDirectory(dirPath string, url string) error {
-	files, err := listDirFilePaths(dirPath)
+	files, err := getFilePaths(dirPath, false)
 	if err != nil {
 		return err
 	}
@@ -132,6 +173,7 @@ func SendDirectory(dirPath string, url string) error {
 	fmt.Print("\nTransfer all files? [Y/N] ")
 	fmt.Scanln(&confirm)
 	if strings.ToLower(confirm) != "y" {
+		fmt.Print("\nCancel send all files ")
 		return nil
 	}
 
