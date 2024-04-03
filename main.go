@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/chyok/st/config"
 	"github.com/chyok/st/internal/discovery"
@@ -77,7 +78,8 @@ func main() {
 		},
 		Action: func(c *cli.Context) error {
 			if c.NArg() > 0 {
-				config.G.FilePath = c.Args().Get(0)
+				currentPath := filepath.ToSlash(c.Args().Get(0))
+				config.G.FilePath = currentPath
 				return sendFile(c)
 			}
 			return receiveFile(c)
