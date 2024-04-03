@@ -29,7 +29,6 @@ func SendHandler(w http.ResponseWriter, r *http.Request) {
 func serveDownloadPage(w http.ResponseWriter, r *http.Request) {
 	urlPath := r.URL.Path
 	currentPath := config.G.FilePath
-	currentPath = filepath.ToSlash(currentPath)
 
 	basePath := filepath.Base(currentPath)
 
@@ -87,6 +86,7 @@ func serveDownloadPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func SendFile(filePath string, url string) error {
+	filePath = filepath.ToSlash(filePath)
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {

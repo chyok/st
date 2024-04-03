@@ -94,5 +94,4 @@ func Send(role Role) {
 
 	message := fmt.Sprintf("%s%s%s", config.G.DeviceName, separator, role)
 	conn.Write([]byte(message))
-	fmt.Printf("Sent discovery message: %s\n", message)
 }
