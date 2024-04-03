@@ -102,7 +102,7 @@ func SendFile(filePath string, url string) error {
 	return postFile(filePath, path.Base(filePath), url)
 }
 
-func SendDirectory(dirPath string, url string) error {
+func listDirFilePaths(dirPath string) ([]string, error) {
 	var files []string
 	filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() {
@@ -112,8 +112,15 @@ func SendDirectory(dirPath string, url string) error {
 	})
 
 	if len(files) == 0 {
-		fmt.Printf("Folder %s is empty.\n", dirPath)
-		return nil
+		return nil, fmt.Errorf("folder %s is empty", dirPath)
+	}
+	return files, nil
+}
+
+func SendDirectory(dirPath string, url string) error {
+	files, err := listDirFilePaths(dirPath)
+	if err != nil {
+		return err
 	}
 
 	fmt.Println("\nAll files in folder:")
