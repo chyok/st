@@ -41,17 +41,17 @@ func handleFilePaths(w http.ResponseWriter, _ *http.Request) {
 		Paths []string `json:"paths"`
 	}
 
-	files, err := getFilePaths(currentPath, true)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	resp.Paths = files
-
 	if fileInfo.IsDir() {
+		files, err := getDirFilePaths(currentPath, true)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		resp.Paths = files
 		resp.Type = "dir"
 	} else {
+		resp.Paths = []string{filepath.Base(currentPath)}
 		resp.Type = "file"
 	}
 
@@ -135,7 +135,7 @@ func SendFile(filePath string, url string) error {
 	return postFile(filePath, path.Base(filePath), url)
 }
 
-func getFilePaths(dirPath string, relativeOnly bool) ([]string, error) {
+func getDirFilePaths(dirPath string, relativeOnly bool) ([]string, error) {
 	var filePaths []string
 	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -159,7 +159,7 @@ func getFilePaths(dirPath string, relativeOnly bool) ([]string, error) {
 }
 
 func SendDirectory(dirPath string, url string) error {
-	files, err := getFilePaths(dirPath, false)
+	files, err := getDirFilePaths(dirPath, false)
 	if err != nil {
 		return err
 	}
