@@ -55,14 +55,13 @@ func Listen(role Role, filePath string) {
 		switch remoteRole {
 		case Sender:
 			if role == Sender {
-				continue
-				// fmt.Printf("Discovered Sender: %s (%s)\n", deviceName, remoteAddr)
-				// go func() {
-				// 	err := transfer.ReceiveFile(filePath, remoteAddr)
-				// 	if err != nil {
-				// 		fmt.Printf("Receive file from %s error: %s\n", remoteAddr, err)
-				// 	}
-				// }()
+				fmt.Printf("Discovered Sender: %s (%s)\n", deviceName, remoteAddr)
+				go func() {
+					err := transfer.ReceiveFile(remoteAddr)
+					if err != nil {
+						fmt.Printf("Receive file from %s error: %s\n", remoteAddr, err)
+					}
+				}()
 			}
 		case Receiver:
 			if role == Receiver {
