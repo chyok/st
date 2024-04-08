@@ -36,10 +36,6 @@ func handleFilePaths(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	var resp struct {
-		Type  string   `json:"type"`
-		Paths []string `json:"paths"`
-	}
 
 	if fileInfo.IsDir() {
 		files, err := getDirFilePaths(currentPath, true)
@@ -47,16 +43,15 @@ func handleFilePaths(w http.ResponseWriter, _ *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		resp.Paths = files
-		resp.Type = "dir"
+		PathInfo.Paths = files
+		PathInfo.Type = "dir"
 	} else {
-		resp.Paths = []string{filepath.Base(currentPath)}
-		resp.Type = "file"
+		PathInfo.Paths = []string{filepath.Base(currentPath)}
+		PathInfo.Type = "file"
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	json.NewEncoder(w).Encode(PathInfo)
 }
 
 func serveDownloadPage(w http.ResponseWriter, r *http.Request) {
@@ -144,10 +139,10 @@ func getDirFilePaths(dirPath string, relativeOnly bool) ([]string, error) {
 		if !info.IsDir() {
 			if relativeOnly {
 				fileName := filepath.Base(path)
-				relativePath := filepath.Join(filepath.Base(dirPath), fileName)
+				relativePath := filepath.ToSlash(filepath.Join(filepath.Base(dirPath), fileName))
 				filePaths = append(filePaths, relativePath)
 			} else {
-				filePaths = append(filePaths, path)
+				filePaths = append(filePaths, filepath.ToSlash(path))
 			}
 		}
 		return nil
