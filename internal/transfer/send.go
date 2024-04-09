@@ -21,15 +21,15 @@ import (
 func SendHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		serveDownloadPage(w, r)
+		serveDownloadFilesPage(w, r)
 	case http.MethodPost:
-		handleFilePaths(w, r)
+		getAllFilePaths(w, r)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
-func handleFilePaths(w http.ResponseWriter, _ *http.Request) {
+func getAllFilePaths(w http.ResponseWriter, _ *http.Request) {
 	currentPath := config.G.FilePath
 	fileInfo, err := os.Stat(currentPath)
 	if err != nil {
@@ -54,7 +54,7 @@ func handleFilePaths(w http.ResponseWriter, _ *http.Request) {
 	json.NewEncoder(w).Encode(PathInfo)
 }
 
-func serveDownloadPage(w http.ResponseWriter, r *http.Request) {
+func serveDownloadFilesPage(w http.ResponseWriter, r *http.Request) {
 	urlPath := r.URL.Path
 	currentPath := config.G.FilePath
 
