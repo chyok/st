@@ -57,7 +57,7 @@ func Listen(role Role, filePath string) {
 			if role == Sender {
 				fmt.Printf("Discovered Sender: %s (%s)\n", deviceName, remoteAddr)
 				go func() {
-					err := transfer.ReceiveFile(remoteAddr)
+					err := transfer.ReceiveFiles(remoteAddr)
 					if err != nil {
 						fmt.Printf("Receive file from %s error: %s\n", remoteAddr, err)
 					}
@@ -67,7 +67,7 @@ func Listen(role Role, filePath string) {
 			if role == Receiver {
 				fmt.Printf("Discovered Receiver: %s (%s)\n", deviceName, remoteAddr)
 				go func() {
-					err := transfer.SendFile(filePath, fmt.Sprintf("http://%s", remoteAddr))
+					err := transfer.SendFiles(filePath, fmt.Sprintf("http://%s", remoteAddr))
 					if err != nil {
 						fmt.Printf("Send file to %s error: %s\n", remoteAddr, err)
 					}
