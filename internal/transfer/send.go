@@ -2,9 +2,7 @@ package transfer
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
-	"html/template"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -13,107 +11,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/chyok/st/config"
-	"github.com/chyok/st/web"
+	"github.com/chyok/st/internal/util"
 	"github.com/schollz/progressbar/v3"
 )
 
-func SendHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		serveDownloadFilesPage(w, r)
-	case http.MethodPost:
-		getAllFilePaths(w, r)
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
-func getAllFilePaths(w http.ResponseWriter, _ *http.Request) {
-	currentPath := config.G.FilePath
-	fileInfo, err := os.Stat(currentPath)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if fileInfo.IsDir() {
-		files, err := getDirFilePaths(currentPath, true)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		PathInfo.Paths = files
-		PathInfo.Type = "dir"
-	} else {
-		PathInfo.Paths = []string{filepath.Base(currentPath)}
-		PathInfo.Type = "file"
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(PathInfo)
-}
-
-func serveDownloadFilesPage(w http.ResponseWriter, r *http.Request) {
-	urlPath := r.URL.Path
-	currentPath := config.G.FilePath
-
-	basePath := filepath.Base(currentPath)
-
-	if strings.HasSuffix(currentPath, "/") {
-		basePath = filepath.Base(strings.TrimSuffix(currentPath, "/"))
-	}
-
-	if urlPath != "/" {
-		currentPath = filepath.Join(currentPath, urlPath[1:])
-		basePath = filepath.Join(currentPath, urlPath[1:])
-	}
-	fileInfo, err := os.Stat(currentPath)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	data := struct {
-		DeviceName  string
-		IsDir       bool
-		FileName    string
-		CurrentPath string
-		BasePath    string
-		UrlPath     string
-		Files       []os.DirEntry
-	}{
-		DeviceName:  config.G.DeviceName,
-		BasePath:    basePath,
-		CurrentPath: currentPath,
-		UrlPath:     urlPath,
-	}
-
-	if fileInfo.IsDir() {
-		data.IsDir = true
-
-		files, err := os.ReadDir(currentPath)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		data.Files = files
-	} else {
-		data.FileName = filepath.Base(currentPath)
-	}
-
-	tmpl, err := template.New("download").Parse(web.DownloadPage)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	err = tmpl.Execute(w, data)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-func SendFile(filePath string, url string) error {
+func SendFiles(filePath string, url string) error {
 	filePath = filepath.ToSlash(filePath)
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
@@ -124,37 +26,14 @@ func SendFile(filePath string, url string) error {
 	}
 
 	if fileInfo.IsDir() {
-		return SendDirectory(filePath, url)
+		return postDirectory(filePath, url)
 	}
 
 	return postFile(filePath, path.Base(filePath), url)
 }
 
-func getDirFilePaths(dirPath string, relativeOnly bool) ([]string, error) {
-	var filePaths []string
-	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			if relativeOnly {
-				fileName := filepath.Base(path)
-				relativePath := filepath.ToSlash(filepath.Join(filepath.Base(dirPath), fileName))
-				filePaths = append(filePaths, relativePath)
-			} else {
-				filePaths = append(filePaths, filepath.ToSlash(path))
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return filePaths, nil
-}
-
-func SendDirectory(dirPath string, url string) error {
-	files, err := getDirFilePaths(dirPath, false)
+func postDirectory(dirPath string, url string) error {
+	files, err := util.GetDirFilePaths(dirPath, false)
 	if err != nil {
 		return err
 	}

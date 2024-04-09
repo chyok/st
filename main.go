@@ -8,7 +8,7 @@ import (
 
 	"github.com/chyok/st/config"
 	"github.com/chyok/st/internal/discovery"
-	"github.com/chyok/st/internal/transfer"
+	"github.com/chyok/st/internal/handler"
 	"github.com/chyok/st/web"
 	"github.com/skip2/go-qrcode"
 	"github.com/urfave/cli/v2"
@@ -23,6 +23,26 @@ func initConfig(c *cli.Context) error {
 	return nil
 }
 
+func receiveClient() error {
+	go discovery.Send(discovery.Receiver)
+	go discovery.Listen(discovery.Sender, "")
+
+	address := fmt.Sprintf("http://%s:%s", config.G.LocalIP, config.G.Port)
+	q, err := qrcode.New(address, qrcode.Low)
+	if err != nil {
+		return err
+	}
+	fmt.Println(q.ToSmallString(false))
+	fmt.Printf("Server address: %s\n", address)
+
+	http.HandleFunc("/", handler.ReceiveHandler)
+	http.Handle("/static/", http.StripPrefix("/static/",
+		http.FileServer(http.FS(web.CssFs))))
+
+	fmt.Println("Waiting for transfer...")
+	return http.ListenAndServe(config.G.WildcardAddress, nil)
+}
+
 func sendClient() error {
 	go discovery.Send(discovery.Sender)
 	go discovery.Listen(discovery.Receiver, config.G.FilePath)
@@ -35,28 +55,11 @@ func sendClient() error {
 	fmt.Println(q.ToSmallString(false))
 	fmt.Printf("Server address: %s\n", url)
 
-	http.HandleFunc("/", transfer.SendHandler)
-	http.HandleFunc("/download/", transfer.DownloadFileHandler)
+	http.HandleFunc("/", handler.SendHandler)
+	http.HandleFunc("/download/", handler.FileServerHandler)
 
-	return http.ListenAndServe(config.G.WildcardAddress, nil)
-}
-
-func receiveClient() error {
-	go discovery.Send(discovery.Receiver)
-	go discovery.Listen(discovery.Sender, "")
-
-	address := fmt.Sprintf("http://%s:%s", config.G.LocalIP, config.G.Port)
-	q, err := qrcode.New(address, qrcode.Low)
-	if err != nil {
-		return err
-	}
-	fmt.Println(q.ToSmallString(false))
-	fmt.Printf("Server address: %s\n", address)
 	fmt.Println("Waiting for transfer...")
 
-	http.HandleFunc("/", transfer.ReceiveHandler)
-	http.Handle("/static/", http.StripPrefix("/static/",
-		http.FileServer(http.FS(web.CssFs))))
 	return http.ListenAndServe(config.G.WildcardAddress, nil)
 }
 
@@ -70,7 +73,7 @@ func main() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:        "port",
-				Value:       "9999",
+				Value:       "53333",
 				Usage:       "server port",
 				Aliases:     []string{"p"},
 				Destination: &port,

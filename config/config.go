@@ -24,7 +24,7 @@ func (c *Config) SetConf(port string) {
 	c.DeviceName = Hostname
 	c.Port = port
 	c.LocalIP = getLocalIP()
-	c.MulticastAddress = "224.0.0.1" + ":" + port
+	c.MulticastAddress = "224.0.0.169" + ":" + port
 	c.WildcardAddress = "0.0.0.0" + ":" + port
 	c.FilePath = ""
 }
