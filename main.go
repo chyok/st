@@ -23,7 +23,7 @@ func initConfig(c *cli.Context) error {
 	return nil
 }
 
-func sendFile(_ *cli.Context) error {
+func sendClient() error {
 	go discovery.Send(discovery.Sender)
 	go discovery.Listen(discovery.Receiver, config.G.FilePath)
 
@@ -41,7 +41,7 @@ func sendFile(_ *cli.Context) error {
 	return http.ListenAndServe(config.G.WildcardAddress, nil)
 }
 
-func receiveFile(_ *cli.Context) error {
+func receiveClient() error {
 	go discovery.Send(discovery.Receiver)
 	go discovery.Listen(discovery.Sender, "")
 
@@ -80,14 +80,14 @@ func main() {
 			if c.NArg() > 0 {
 				currentPath := filepath.ToSlash(c.Args().Get(0))
 				config.G.FilePath = currentPath
-				return sendFile(c)
+				return sendClient()
 			}
-			return receiveFile(c)
+			return receiveClient()
 		},
 		Before: initConfig,
 	}
 	err := app.Run(os.Args)
 	if err != nil {
-		panic(err)
+		fmt.Println(err.Error())
 	}
 }
