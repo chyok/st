@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"net"
 	"os"
 )
@@ -24,8 +25,8 @@ func (c *Config) SetConf(port string) {
 	c.DeviceName = Hostname
 	c.Port = port
 	c.LocalIP = getLocalIP()
-	c.MulticastAddress = "224.0.0.169" + ":" + port
-	c.WildcardAddress = "0.0.0.0" + ":" + port
+	c.MulticastAddress = fmt.Sprintf("224.0.0.169:%s", port)
+	c.WildcardAddress = fmt.Sprintf("0.0.0.0:%s", port)
 	c.FilePath = ""
 }
 
