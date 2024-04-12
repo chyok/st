@@ -84,7 +84,13 @@ func Send(role Role) {
 		return
 	}
 
-	conn, err := net.DialUDP("udp", nil, addr)
+	localAddr, err := net.ResolveUDPAddr("udp", config.G.LocalIP+":0")
+	if err != nil {
+		fmt.Printf("Failed to resolve %s: %v\n", config.G.MulticastAddress, err)
+		return
+	}
+
+	conn, err := net.DialUDP("udp", localAddr, addr)
 	if err != nil {
 		fmt.Printf("Failed to dial %s: %v\n", config.G.MulticastAddress, err)
 		return
