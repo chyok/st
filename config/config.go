@@ -17,23 +17,27 @@ type Config struct {
 
 var G Config
 
-func (c *Config) SetConf(port string) {
+func (c *Config) SetConf(port string) error {
 	Hostname, err := os.Hostname()
 	if err != nil {
 		Hostname = "unknow device"
 	}
 	c.DeviceName = Hostname
 	c.Port = port
-	c.LocalIP = getLocalIP()
+	c.LocalIP, err = getLocalIP()
+	if err != nil {
+		return err
+	}
 	c.MulticastAddress = fmt.Sprintf("224.0.0.169:%s", port)
 	c.WildcardAddress = fmt.Sprintf("0.0.0.0:%s", port)
 	c.FilePath = ""
+	return nil
 }
 
-func getLocalIP() string {
+func getLocalIP() (string, error) {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 	var ips []string
 	for _, address := range addrs {
@@ -44,9 +48,9 @@ func getLocalIP() string {
 		}
 	}
 	if len(ips) == 0 {
-		panic("get local ip failed")
+		return "", fmt.Errorf("get local ip failed")
 	} else if len(ips) == 1 {
-		return ips[0]
+		return ips[0], nil
 	} else {
 		// Select the one connected to the network
 		// when there are multiple network interfaces
@@ -54,10 +58,10 @@ func getLocalIP() string {
 		// Is there a better way？
 		c, err := net.Dial("udp", "8.8.8.8:80")
 		if err != nil {
-			return ips[0]
+			return ips[0], nil
 		}
 		defer c.Close()
-		return c.LocalAddr().(*net.UDPAddr).IP.String()
+		return c.LocalAddr().(*net.UDPAddr).IP.String(), nil
 	}
 
 }
