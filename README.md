@@ -3,24 +3,33 @@
 ![GitHub tag (with filter)](https://img.shields.io/github/v/tag/chyok/st)
 ![GitHub License](https://img.shields.io/github/license/chyok/st)
 
-
-`st` is a command-line project written in Go for file transfer within a local network. Its working principle is based on multicast, where the sender discovers the host in the local network, and the receiver returns its IP address to the sender and initiates an HTTP service to receive files. The sender then transfers the file to the receiver via HTTP. Moreover, even if there's only a receiver, it can access the file transfer address via the prompted address, allowing file transfer through a webpage without the need to run a command on the sender's side.  
-
-![example](https://github.com/chyok/st/assets/32629225/3f1b2a19-b84c-4c9a-8264-067e438aa58e)
+`st` is a command-line file transfer tool for local networks. It has a built-in LAN discovery feature, allowing easy file sharing between devices.
 
 ## Simple Usage
-Device A: `st`  
-Device B: `st xxx.txt`  transfer file to A  
-Device B: `st /opt/bin`  transfer bin folder to A   
-Device B: open `http://192.168.31.16:9999(show in A)` and upload file to A
+1. **Receive Files**: - Run `st` to start the file reception service and display a QR code. - Another device can scan the QR code or access the displayed service address to upload files.
+
+2. **Send Files**: - Run `st [filename|foldername]` to start the file sending service and display a QR code. - Another device can scan the QR code or access the displayed service address to download the file.
+
+3. **Automatic discovery**: If both devices have `st` running:
+
+   Device A: `st`  
+
+   Device B: `st xxx.txt`  send file to A  
+
+   ------
+
+   Device A: `st xxx.txt`
+
+   Device B: `st`  receive file from A
 
 ## Features  
 
 `st` offers a convenient and quick method for file transfer within a local network.  
 
-- Auto discover hosts within a local network  
-- Provides a web page access method for file transfer  
-- Folders transfer support 
+- Web-based file transfer interface
+- QR code for more convenient transfer between mobile phone and pc.
+- Support for transferring both files and folders
+- Automatic discovery of hosts within a local network
 
 ## Installation 
 
@@ -37,13 +46,13 @@ go install github.com/chyok/st@latest
 ## Command  
 
 `st` 
-start transer server, waiting transfer.
+start a receive server and display a QR code., waiting for upload.
 
 `st [filename|foldername]` 
-transfer file or folder to all servers on the LAN.
+start a send server and display a QR code., waiting for download.
 
 `st -p [port]` 
-manually specify the service port, the default is 9999.
+manually specify the service port and multicast port, the default is 53333.
 
 
 ## License  
