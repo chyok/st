@@ -66,9 +66,9 @@ func main() {
 	app := &cli.App{
 		Name:      "st",
 		Usage:     "simple file transfer tool",
-		UsageText: "st [global options] [filename]",
-		Description: "if file name provided, it will attempt to send files to all servers\n" +
-			"else become the server and wait to receive the file",
+		UsageText: "st [global options] [filename|foldername]",
+		Description: "st is a simple command-line tool for fast local file/folder sharing, \n" +
+			"offering web-based transfer with QR code scanning and automatic device discovery.",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:        "port",
