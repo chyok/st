@@ -19,8 +19,7 @@ var (
 )
 
 func initConfig(c *cli.Context) error {
-	config.G.SetConf(port)
-	return nil
+	return config.G.SetConf(port)
 }
 
 func receiveClient() error {
