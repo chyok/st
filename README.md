@@ -5,7 +5,7 @@
 
 `st` is a command-line file transfer tool for local networks. It has a built-in LAN discovery feature, allowing easy file sharing between devices.
 
-![example](https://github.com/chyok/st/assets/32629225/5aa8f75b-4a68-46dd-b6c7-cb5cd0904f46)
+![example](https://github.com/chyok/st/assets/32629225/a638b0d2-f509-4e34-a99b-9f9e2a757e02)
 
 ## Simple Usage
 1. **Receive Files**: - Run `st` to start the file reception service and display a QR code. - Another device can scan the QR code or access the displayed service address to upload files.
