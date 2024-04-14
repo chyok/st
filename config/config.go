@@ -13,6 +13,7 @@ type Config struct {
 	MulticastAddress string
 	WildcardAddress  string
 	FilePath         string
+	Version          string
 }
 
 var G Config
@@ -31,6 +32,7 @@ func (c *Config) SetConf(port string) error {
 	c.MulticastAddress = fmt.Sprintf("224.0.0.169:%s", port)
 	c.WildcardAddress = fmt.Sprintf("0.0.0.0:%s", port)
 	c.FilePath = ""
+	c.Version = "0.2.0"
 	return nil
 }
 

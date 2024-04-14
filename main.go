@@ -77,8 +77,18 @@ func main() {
 				Aliases:     []string{"p"},
 				Destination: &port,
 			},
+			&cli.BoolFlag{
+				Name:    "version",
+				Aliases: []string{"v"},
+				Usage:   "print the version",
+			},
 		},
 		Action: func(c *cli.Context) error {
+			if c.Bool("version") {
+				fmt.Printf("st version %s\n", config.G.Version)
+				return nil
+			}
+
 			if c.NArg() > 0 {
 				currentPath := filepath.ToSlash(c.Args().Get(0))
 				config.G.FilePath = currentPath
