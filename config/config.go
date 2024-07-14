@@ -32,7 +32,7 @@ func (c *Config) SetConf(port string) error {
 	c.MulticastAddress = fmt.Sprintf("224.0.0.169:%s", port)
 	c.WildcardAddress = fmt.Sprintf("0.0.0.0:%s", port)
 	c.FilePath = ""
-	c.Version = "0.2.0"
+	c.Version = "0.2.1"
 	return nil
 }
 
