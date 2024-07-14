@@ -91,7 +91,17 @@ func main() {
 
 			if c.NArg() > 0 {
 				currentPath := filepath.ToSlash(c.Args().Get(0))
-				config.G.FilePath = currentPath
+				absPath, err := filepath.Abs(currentPath)
+				if err != nil {
+					fmt.Printf("File error: %s\n", err)
+					return nil
+				}
+				fmt.Printf("file path: %s\n", absPath)
+				if _, err := os.Stat(absPath); os.IsNotExist(err) {
+					fmt.Printf("File or Folder not exist: %s\n", err)
+					return nil
+				}
+				config.G.FilePath = absPath
 				return sendClient()
 			}
 			return receiveClient()
