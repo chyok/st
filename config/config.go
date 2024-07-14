@@ -21,7 +21,7 @@ var G Config
 func (c *Config) SetConf(port string) error {
 	Hostname, err := os.Hostname()
 	if err != nil {
-		Hostname = "unknow device"
+		Hostname = "unknown device"
 	}
 	c.DeviceName = Hostname
 	c.Port = port
