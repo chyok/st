@@ -28,10 +28,10 @@
 
 `st` offers a convenient and quick method for file transfer within a local network.  
 
-- Web-based file transfer interface
+- Web-based file transfer interface.
 - QR code for more convenient transfer between mobile phone and pc.
-- Support for transferring both files and folders
-- Automatic discovery of hosts within a local network
+- Support for transferring both files and folders.
+- Automatic discovery of hosts within a local network.
 
 ## Installation 
 
