@@ -96,7 +96,6 @@ func main() {
 					fmt.Printf("File error: %s\n", err)
 					return nil
 				}
-				fmt.Printf("file path: %s\n", absPath)
 				if _, err := os.Stat(absPath); os.IsNotExist(err) {
 					fmt.Printf("File or Folder not exist: %s\n", err)
 					return nil
