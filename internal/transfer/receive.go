@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/chyok/st/internal/util"
 )
 
 func ReceiveFiles(remoteAddr string) error {
@@ -59,6 +61,11 @@ func ReceiveFiles(remoteAddr string) error {
 
 func downloadFile(remoteAddr, path string) error {
 	path = filepath.ToSlash(path)
+	localPath, err := util.SafeJoin(".", path)
+	if err != nil {
+		return err
+	}
+
 	resp, err := http.Get(fmt.Sprintf("http://%s/download/%s", remoteAddr, path))
 	if err != nil {
 		return err
@@ -70,7 +77,7 @@ func downloadFile(remoteAddr, path string) error {
 	}
 
 	fmt.Printf("Downloading [%s]...\n", path)
-	out, err := os.Create(path)
+	out, err := os.Create(localPath)
 	if err != nil {
 		return err
 	}
