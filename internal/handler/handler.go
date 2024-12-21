@@ -44,7 +44,11 @@ func ReceiveHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		filename := filepath.FromSlash(params["filename"])
+		filename, err := util.SafeJoin(".", params["filename"])
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
 		fmt.Printf("Downloading [%s]...\n", filename)
 		dirPath := filepath.Dir(filename)
