@@ -77,6 +77,9 @@ func downloadFile(remoteAddr, path string) error {
 	}
 
 	fmt.Printf("Downloading [%s]...\n", path)
+	if err := os.MkdirAll(filepath.Dir(localPath), os.ModePerm); err != nil {
+		return err
+	}
 	out, err := os.Create(localPath)
 	if err != nil {
 		return err
