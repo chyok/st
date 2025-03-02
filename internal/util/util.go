@@ -31,8 +31,11 @@ func GetDirFilePaths(dirPath string, relativeOnly bool) ([]string, error) {
 		}
 		if !info.IsDir() {
 			if relativeOnly {
-				fileName := filepath.Base(path)
-				relativePath := filepath.ToSlash(filepath.Join(filepath.Base(dirPath), fileName))
+				rel, err := filepath.Rel(dirPath, path)
+				if err != nil {
+					return err
+				}
+				relativePath := filepath.ToSlash(filepath.Join(filepath.Base(dirPath), rel))
 				filePaths = append(filePaths, relativePath)
 			} else {
 				filePaths = append(filePaths, filepath.ToSlash(path))
