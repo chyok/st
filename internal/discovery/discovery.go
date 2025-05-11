@@ -35,13 +35,12 @@ func Listen(role Role, filePath string) {
 	buf := make([]byte, 1024)
 	for {
 		n, src, err := conn.ReadFromUDP(buf)
-
-		remoteAddr := src.IP.String() + ":" + config.G.Port
-
 		if err != nil {
-			fmt.Printf("Failed to read from %s: %v\n", remoteAddr, err)
+			fmt.Printf("Failed to read from %s: %v\n", config.G.MulticastAddress, err)
 			continue
 		}
+
+		remoteAddr := src.IP.String() + ":" + config.G.Port
 
 		message := string(buf[:n])
 		parts := strings.Split(message, separator)
