@@ -88,8 +88,13 @@ func FileServerHandler(w http.ResponseWriter, r *http.Request) {
 
 	basePath := filepath.Base(currentPath)
 	if fileInfo.IsDir() {
-		path := r.URL.Path[len("/download/"+basePath):]
-		fullPath := filepath.Join(currentPath, path)
+		prefix := "/download/" + basePath
+		if r.URL.Path != prefix && !strings.HasPrefix(r.URL.Path, prefix+"/") {
+			http.NotFound(w, r)
+			return
+		}
+		rel := strings.TrimPrefix(r.URL.Path, prefix)
+		fullPath := filepath.Join(currentPath, filepath.FromSlash(rel))
 		http.ServeFile(w, r, fullPath)
 	} else {
 		http.ServeFile(w, r, currentPath)
