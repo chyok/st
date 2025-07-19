@@ -10,6 +10,7 @@ import (
 
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/chyok/st/config"
@@ -106,7 +107,8 @@ func SendHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		// serve download page for send
 		realFilePath := filepath.Join(config.G.FilePath, r.URL.Path[1:])
-		downloadPath := filepath.Join(filepath.Base(config.G.FilePath), r.URL.Path[1:])
+		// downloadPath ends up in URLs, so always use forward slashes.
+		downloadPath := path.Join(filepath.Base(config.G.FilePath), r.URL.Path[1:])
 		fileInfo, err := os.Stat(realFilePath)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
