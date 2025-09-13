@@ -19,8 +19,4 @@ build-all:: build
 
 clean::
 	rm -f st
-	rm -f st-linux64
-	rm -f st-linux-arm
-	rm -f st-linux-arm64
-	rm -f st-mac
-	rm -f st-windows.exe
+	rm -rf builds
