@@ -88,7 +88,7 @@
     function uploadFile(file, row) {  
       var progressBar = row.querySelector('.progress-bar');  
       var formData = new FormData();  
-      formData.append("file", file);  
+      formData.append("file", file, file.webkitRelativePath || file.name);  
       var ajax = new XMLHttpRequest();  
       ajax.upload.addEventListener('progress', function(e) {  
         var percent = Math.round((e.loaded / e.total) * 100);  
