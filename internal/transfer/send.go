@@ -1,7 +1,6 @@
 package transfer
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -64,38 +63,41 @@ func postDirectory(dirPath string, url string) error {
 }
 
 func postFile(filePath string, filename string, url string) error {
-	payload := &bytes.Buffer{}
-	writer := multipart.NewWriter(payload)
-
 	file, err := os.Open(filePath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	part, err := writer.CreateFormFile("file", filepath.ToSlash(filename))
+	fileInfo, err := file.Stat()
 	if err != nil {
 		return err
 	}
-
-	fileInfo, _ := file.Stat()
 	bar := progressbar.DefaultBytes(
 		fileInfo.Size(),
 		fmt.Sprintf("Uploading [%s]", filename),
 	)
 
-	_, err = io.Copy(io.MultiWriter(part, bar), file)
-	if err != nil {
-		return err
-	}
+	// Stream the multipart body through a pipe instead of buffering the whole
+	// file in memory; the progress bar now tracks bytes actually sent.
+	pr, pw := io.Pipe()
+	writer := multipart.NewWriter(pw)
+	go func() {
+		part, err := writer.CreateFormFile("file", filepath.ToSlash(filename))
+		if err != nil {
+			pw.CloseWithError(err)
+			return
+		}
+		if _, err := io.Copy(io.MultiWriter(part, bar), file); err != nil {
+			pw.CloseWithError(err)
+			return
+		}
+		pw.CloseWithError(writer.Close())
+	}()
 
-	err = writer.Close()
+	req, err := http.NewRequest(http.MethodPost, url, pr)
 	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, url, payload)
-	if err != nil {
+		pr.Close()
 		return err
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
