@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/chyok/st/internal/util"
 )
@@ -34,13 +35,12 @@ func ReceiveFiles(remoteAddr string) error {
 	}
 
 	if pathInfo.Type == "dir" {
-		fmt.Printf("Found directory with %d paths:\n", len(pathInfo.Paths))
+		var details strings.Builder
+		fmt.Fprintf(&details, "Found directory with %d paths:\n", len(pathInfo.Paths))
 		for _, path := range pathInfo.Paths {
-			fmt.Printf("- %s\n", path)
+			fmt.Fprintf(&details, "- %s\n", path)
 		}
-		fmt.Print("Do you want to download the entire directory? [y/n] ")
-		var confirm string
-		if _, err := fmt.Scanln(&confirm); err != nil || (confirm != "y" && confirm != "Y") {
+		if !confirm(details.String(), "Do you want to download the entire directory? [y/n] ") {
 			return nil
 		}
 		for _, path := range pathInfo.Paths {

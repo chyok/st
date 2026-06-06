@@ -37,16 +37,13 @@ func postDirectory(dirPath string, url string) error {
 		return err
 	}
 
-	fmt.Println("\nAll files in folder:")
+	var details strings.Builder
+	details.WriteString("\nAll files in folder:\n")
 	for _, file := range files {
-		fmt.Println(file)
+		details.WriteString(file + "\n")
 	}
-
-	var confirm string
-	fmt.Print("\nTransfer all files? [Y/N] ")
-	fmt.Scanln(&confirm)
-	if strings.ToLower(confirm) != "y" {
-		fmt.Print("\nCancel send all files ")
+	if !confirm(details.String(), "\nTransfer all files? [Y/N] ") {
+		fmt.Println("\nCancel send all files")
 		return nil
 	}
 
