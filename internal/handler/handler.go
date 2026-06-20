@@ -2,9 +2,11 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
+	"io/fs"
 	"mime"
 	"strings"
 
@@ -106,11 +108,22 @@ func SendHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		// serve download page for send
+		if r.URL.Path != "/" {
+			// A single shared file has no sub-paths.
+			if info, err := os.Stat(config.G.FilePath); err == nil && !info.IsDir() {
+				http.NotFound(w, r)
+				return
+			}
+		}
 		realFilePath := filepath.Join(config.G.FilePath, r.URL.Path[1:])
 		// downloadPath ends up in URLs, so always use forward slashes.
 		downloadPath := path.Join(filepath.Base(config.G.FilePath), r.URL.Path[1:])
 		fileInfo, err := os.Stat(realFilePath)
 		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				http.NotFound(w, r)
+				return
+			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
