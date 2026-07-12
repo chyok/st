@@ -1,7 +1,10 @@
 package util
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -47,4 +50,74 @@ func GetDirFilePaths(dirPath string, relativeOnly bool) ([]string, error) {
 		return nil, err
 	}
 	return filePaths, nil
+}
+
+// SaveFile writes the contents of r to path and returns the path it actually
+// used. Data goes to a hidden ".part" file in the same directory first and is
+// moved into place only once fully written, so a failed transfer never leaves
+// a truncated file behind. An existing file is never overwritten: if path is
+// taken, a numbered name such as "a (1).txt" is used instead.
+func SaveFile(path string, r io.Reader) (string, error) {
+	dir, base := filepath.Split(path)
+	if dir == "" {
+		dir = "."
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+
+	tmp, err := os.CreateTemp(dir, "."+base+".*.part")
+	if err != nil {
+		return "", err
+	}
+	tmpName := tmp.Name()
+	_, err = io.Copy(tmp, r)
+	if err == nil {
+		err = tmp.Chmod(0o644)
+	}
+	if cerr := tmp.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		os.Remove(tmpName)
+		return "", err
+	}
+
+	final, err := reserveName(path)
+	if err != nil {
+		os.Remove(tmpName)
+		return "", err
+	}
+	// The rename replaces the empty placeholder reserveName created.
+	if err := os.Rename(tmpName, final); err != nil {
+		os.Remove(tmpName)
+		os.Remove(final)
+		return "", err
+	}
+	return final, nil
+}
+
+// reserveName atomically creates an empty file at path, or at the first free
+// "name (n).ext" variant of it, and returns the name it claimed.
+func reserveName(path string) (string, error) {
+	ext := filepath.Ext(path)
+	if ext == filepath.Base(path) {
+		ext = "" // dotfile such as ".bashrc": number it as ".bashrc (1)"
+	}
+	stem := strings.TrimSuffix(path, ext)
+	for i := 0; i < 10000; i++ {
+		candidate := path
+		if i > 0 {
+			candidate = fmt.Sprintf("%s (%d)%s", stem, i, ext)
+		}
+		f, err := os.OpenFile(candidate, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+		if err == nil {
+			f.Close()
+			return candidate, nil
+		}
+		if !errors.Is(err, fs.ErrExist) {
+			return "", err
+		}
+	}
+	return "", fmt.Errorf("no free file name for %q", path)
 }

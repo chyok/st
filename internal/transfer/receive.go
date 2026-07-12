@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"io"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -77,20 +75,10 @@ func downloadFile(remoteAddr, path string) error {
 	}
 
 	fmt.Printf("Downloading [%s]...\n", path)
-	if err := os.MkdirAll(filepath.Dir(localPath), os.ModePerm); err != nil {
-		return err
-	}
-	out, err := os.Create(localPath)
+	saved, err := util.SaveFile(localPath, resp.Body)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
-
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("[✅] Download [%s] Success.\n", path)
+	fmt.Printf("[✅] Download [%s] Success.\n", saved)
 	return nil
 }

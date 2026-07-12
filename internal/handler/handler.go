@@ -35,49 +35,59 @@ func ReceiveHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	case http.MethodPost:
 		// receive file and save
-		file, header, err := r.FormFile("file")
-		if err != nil {
+		if err := receiveUpload(r); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
 		}
-		defer file.Close()
-
-		_, params, err := mime.ParseMediaType(header.Header.Get("Content-Disposition"))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		filename, err := util.SafeJoin(".", params["filename"])
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		fmt.Printf("Downloading [%s]...\n", filename)
-		dirPath := filepath.Dir(filename)
-		err = os.MkdirAll(dirPath, os.ModePerm)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		out, err := os.Create(filename)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		defer out.Close()
-
-		_, err = io.Copy(out, file)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		fmt.Printf("[✅] Download [%s] Success.\n", filename)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+// receiveUpload streams every "file" part of a multipart request straight to
+// disk. Unlike r.FormFile it does not spool large uploads to a temporary file
+// first, so each upload is written to disk only once.
+func receiveUpload(r *http.Request) error {
+	mr, err := r.MultipartReader()
+	if err != nil {
+		return err
+	}
+	received := 0
+	for {
+		part, err := mr.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		if part.FormName() != "file" {
+			part.Close()
+			continue
+		}
+		// part.FileName() drops directories; parse the header ourselves to
+		// keep the folder structure of browser folder uploads.
+		_, params, err := mime.ParseMediaType(part.Header.Get("Content-Disposition"))
+		if err != nil {
+			return err
+		}
+		filename, err := util.SafeJoin(".", params["filename"])
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Downloading [%s]...\n", filename)
+		saved, err := util.SaveFile(filename, part)
+		part.Close()
+		if err != nil {
+			return err
+		}
+		fmt.Printf("[✅] Download [%s] Success.\n", saved)
+		received++
+	}
+	if received == 0 {
+		return errors.New("no file in request")
+	}
+	return nil
 }
 
 func FileServerHandler(w http.ResponseWriter, r *http.Request) {

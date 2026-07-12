@@ -1,9 +1,11 @@
 package util
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -53,5 +55,74 @@ func TestGetDirFilePathsRelativeKeepsSubdirs(t *testing.T) {
 	want := []string{"share/sub/deep.txt", "share/sub/more/deeper.txt", "share/top.txt"}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("GetDirFilePaths = %v, want %v", got, want)
+	}
+}
+
+func TestSaveFileNeverOverwrites(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "sub", "a.txt")
+	want := []string{"a.txt", "a (1).txt", "a (2).txt"}
+	for i, name := range want {
+		got, err := SaveFile(target, strings.NewReader(name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != filepath.Join(dir, "sub", name) {
+			t.Errorf("save #%d went to %q, want %q", i, got, name)
+		}
+	}
+	for _, name := range want {
+		b, err := os.ReadFile(filepath.Join(dir, "sub", name))
+		if err != nil || string(b) != name {
+			t.Errorf("%s = %q, %v; want its own content", name, b, err)
+		}
+	}
+	assertNoPartFiles(t, filepath.Join(dir, "sub"))
+}
+
+func TestSaveFileDotfile(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, ".bashrc")
+	SaveFile(target, strings.NewReader("1"))
+	got, err := SaveFile(target, strings.NewReader("2"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(dir, ".bashrc (1)"); got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+type failingReader struct{ n int }
+
+func (r *failingReader) Read(p []byte) (int, error) {
+	if r.n == 0 {
+		return 0, errors.New("connection lost")
+	}
+	r.n--
+	return copy(p, "partial"), nil
+}
+
+func TestSaveFileFailureLeavesNothing(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := SaveFile(filepath.Join(dir, "a.txt"), &failingReader{n: 2}); err == nil {
+		t.Fatal("expected error")
+	}
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 0 {
+		t.Errorf("leftover files after failed save: %v", entries)
+	}
+}
+
+func assertNoPartFiles(t *testing.T, dir string) {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".part") {
+			t.Errorf("leftover temp file %s", e.Name())
+		}
 	}
 }

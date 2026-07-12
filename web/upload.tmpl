@@ -116,6 +116,12 @@
         progressBar.style.width = percent + '%';
       });
       ajax.addEventListener('load', function() {
+        if (ajax.status !== 200) {
+          progressBar.style.width = '100%';
+          progressBar.className += ' progress-bar-danger';
+          progressBar.textContent = 'Failed: ' + ajax.responseText;
+          return;
+        }
         uploads.removeChild(row);
         var newRow = document.createElement('tr');
         newRow.appendChild(textCell('column-name', file.webkitRelativePath || file.name));
