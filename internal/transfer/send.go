@@ -28,7 +28,12 @@ func SendFiles(filePath string, url string) error {
 		return postDirectory(filePath, url)
 	}
 
-	return postFile(filePath, path.Base(filePath), url)
+	name := path.Base(filePath)
+	if !confirm(fmt.Sprintf("\nFound receiver at %s\n", url), fmt.Sprintf("Send [%s]? [y/n] ", name)) {
+		fmt.Println("\nCancel send file")
+		return nil
+	}
+	return postFile(filePath, name, url)
 }
 
 func postDirectory(dirPath string, url string) error {
@@ -38,7 +43,7 @@ func postDirectory(dirPath string, url string) error {
 	}
 
 	var details strings.Builder
-	details.WriteString("\nAll files in folder:\n")
+	fmt.Fprintf(&details, "\nFound receiver at %s\nAll files in folder:\n", url)
 	for _, file := range files {
 		details.WriteString(file + "\n")
 	}

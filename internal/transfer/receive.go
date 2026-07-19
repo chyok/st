@@ -35,7 +35,7 @@ func ReceiveFiles(remoteAddr string) error {
 
 	if pathInfo.Type == "dir" {
 		var details strings.Builder
-		fmt.Fprintf(&details, "Found directory with %d paths:\n", len(pathInfo.Paths))
+		fmt.Fprintf(&details, "\nFound sender at %s offering a directory with %d files:\n", remoteAddr, len(pathInfo.Paths))
 		for _, path := range pathInfo.Paths {
 			fmt.Fprintf(&details, "- %s\n", path)
 		}
@@ -50,6 +50,10 @@ func ReceiveFiles(remoteAddr string) error {
 	} else {
 		if len(pathInfo.Paths) != 1 {
 			return fmt.Errorf("unexpected number of paths: %d", len(pathInfo.Paths))
+		}
+		details := fmt.Sprintf("\nFound sender at %s offering file: %s\n", remoteAddr, pathInfo.Paths[0])
+		if !confirm(details, "Download it? [y/n] ") {
+			return nil
 		}
 		if err := downloadFile(remoteAddr, pathInfo.Paths[0]); err != nil {
 			return err
