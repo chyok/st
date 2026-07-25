@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -10,6 +11,8 @@ import (
 	"net/textproto"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/chyok/st/config"
@@ -139,5 +142,69 @@ func TestReceiveHandlerRejectsBadUploads(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join("..", "escape.txt")); err == nil {
 		t.Error("upload escaped the receive directory")
+	}
+}
+
+// shareWithEscapingLinks builds share/ containing an ordinary file, a link to
+// that file (allowed), and links to a file and a directory outside share/.
+func shareWithEscapingLinks(t *testing.T) string {
+	t.Helper()
+	base := t.TempDir()
+	root := filepath.Join(base, "share")
+	outside := filepath.Join(base, "secret")
+	for _, d := range []string{root, outside} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	must(os.WriteFile(filepath.Join(root, "ok.txt"), []byte("ok"), 0o644))
+	must(os.WriteFile(filepath.Join(outside, "key"), []byte("SECRET"), 0o644))
+	if err := os.Symlink("ok.txt", filepath.Join(root, "inner-link")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	must(os.Symlink(filepath.Join(outside, "key"), filepath.Join(root, "file-link")))
+	must(os.Symlink(outside, filepath.Join(root, "dir-link")))
+	return root
+}
+
+func TestSymlinksCannotEscapeShare(t *testing.T) {
+	config.G.FilePath = shareWithEscapingLinks(t)
+
+	get := func(h http.HandlerFunc, method, path string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		h(rec, httptest.NewRequest(method, path, nil))
+		return rec
+	}
+
+	if rec := get(FileServerHandler, http.MethodGet, "/download/share/inner-link"); rec.Code != http.StatusOK || rec.Body.String() != "ok" {
+		t.Errorf("link inside share = %d %q, want 200 \"ok\"", rec.Code, rec.Body)
+	}
+	for _, p := range []string{"/download/share/file-link", "/download/share/dir-link/key", "/download/share/dir-link"} {
+		if rec := get(FileServerHandler, http.MethodGet, p); rec.Code == http.StatusOK || strings.Contains(rec.Body.String(), "SECRET") || strings.Contains(rec.Body.String(), "key") {
+			t.Errorf("GET %s = %d %q, want it refused", p, rec.Code, rec.Body)
+		}
+	}
+	page := get(SendHandler, http.MethodGet, "/").Body.String()
+	if !strings.Contains(page, "inner-link") || strings.Contains(page, "file-link") || strings.Contains(page, "dir-link") {
+		t.Errorf("listing should show inner-link only among links:\n%s", page)
+	}
+	if rec := get(SendHandler, http.MethodGet, "/dir-link"); rec.Code == http.StatusOK {
+		t.Errorf("listing a directory outside the share = %d, want refused", rec.Code)
+	}
+
+	var info struct{ Paths []string }
+	rec := get(SendHandler, http.MethodPost, "/")
+	if err := json.NewDecoder(rec.Body).Decode(&info); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"share/inner-link", "share/ok.txt"}
+	if !slices.Equal(info.Paths, want) {
+		t.Errorf("advertised paths = %v, want %v", info.Paths, want)
 	}
 }

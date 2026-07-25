@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -26,23 +27,34 @@ func SafeJoin(base, name string) (string, error) {
 	return joined, nil
 }
 
+// GetDirFilePaths lists the regular files under dirPath. Symbolic links are
+// kept only when they resolve to a regular file inside dirPath, because links
+// leading elsewhere cannot be served.
 func GetDirFilePaths(dirPath string, relativeOnly bool) ([]string, error) {
+	root, err := os.OpenRoot(dirPath)
+	if err != nil {
+		return nil, err
+	}
+	defer root.Close()
+	fsys := root.FS()
+
 	var filePaths []string
-	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+	err = fs.WalkDir(fsys, ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if !info.IsDir() {
-			if relativeOnly {
-				rel, err := filepath.Rel(dirPath, path)
-				if err != nil {
-					return err
-				}
-				relativePath := filepath.ToSlash(filepath.Join(filepath.Base(dirPath), rel))
-				filePaths = append(filePaths, relativePath)
-			} else {
-				filePaths = append(filePaths, filepath.ToSlash(path))
+		if !d.Type().IsRegular() {
+			if d.Type()&fs.ModeSymlink == 0 {
+				return nil // directory or special file
 			}
+			if info, err := fs.Stat(fsys, p); err != nil || !info.Mode().IsRegular() {
+				return nil
+			}
+		}
+		if relativeOnly {
+			filePaths = append(filePaths, path.Join(filepath.Base(dirPath), p))
+		} else {
+			filePaths = append(filePaths, filepath.ToSlash(filepath.Join(dirPath, filepath.FromSlash(p))))
 		}
 		return nil
 	})

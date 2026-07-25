@@ -98,44 +98,92 @@ func FileServerHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	basePath := filepath.Base(currentPath)
-	if fileInfo.IsDir() {
-		prefix := "/download/" + basePath
-		if r.URL.Path != prefix && !strings.HasPrefix(r.URL.Path, prefix+"/") {
-			http.NotFound(w, r)
-			return
-		}
-		rel := strings.TrimPrefix(r.URL.Path, prefix)
-		fullPath := filepath.Join(currentPath, filepath.FromSlash(rel))
-		http.ServeFile(w, r, fullPath)
-	} else {
+	if !fileInfo.IsDir() {
 		http.ServeFile(w, r, currentPath)
+		return
 	}
+
+	prefix := "/download/" + filepath.Base(currentPath)
+	if r.URL.Path != prefix && !strings.HasPrefix(r.URL.Path, prefix+"/") {
+		http.NotFound(w, r)
+		return
+	}
+	// os.Root refuses any path, including via symlinks, that leaves the share.
+	root, err := os.OpenRoot(currentPath)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer root.Close()
+	http.ServeFileFS(w, r, root.FS(), rootName(strings.TrimPrefix(r.URL.Path, prefix)))
+}
+
+// rootName turns a URL path into a name for an os.Root filesystem.
+func rootName(urlPath string) string {
+	if name := strings.Trim(urlPath, "/"); name != "" {
+		return name
+	}
+	return "."
+}
+
+// listDir reads a directory of an os.Root filesystem. Symlinks are shown as
+// what they point to, and dropped when they lead outside the root.
+func listDir(fsys fs.FS, name string) ([]fs.DirEntry, error) {
+	entries, err := fs.ReadDir(fsys, name)
+	if err != nil {
+		return nil, err
+	}
+	kept := entries[:0]
+	for _, e := range entries {
+		if e.Type()&fs.ModeSymlink != 0 {
+			info, err := fs.Stat(fsys, path.Join(name, e.Name()))
+			if err != nil {
+				continue
+			}
+			e = fs.FileInfoToDirEntry(info)
+		}
+		kept = append(kept, e)
+	}
+	return kept, nil
 }
 
 func SendHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		// serve download page for send
-		if r.URL.Path != "/" {
-			// A single shared file has no sub-paths.
-			if info, err := os.Stat(config.G.FilePath); err == nil && !info.IsDir() {
-				http.NotFound(w, r)
-				return
-			}
-		}
-		realFilePath := filepath.Join(config.G.FilePath, r.URL.Path[1:])
-		// downloadPath ends up in URLs, so always use forward slashes.
-		downloadPath := path.Join(filepath.Base(config.G.FilePath), r.URL.Path[1:])
-		fileInfo, err := os.Stat(realFilePath)
+		sharedInfo, err := os.Stat(config.G.FilePath)
 		if err != nil {
-			if errors.Is(err, fs.ErrNotExist) {
-				http.NotFound(w, r)
-				return
-			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
+		}
+		if r.URL.Path != "/" && !sharedInfo.IsDir() {
+			// A single shared file has no sub-paths.
+			http.NotFound(w, r)
+			return
+		}
+		// downloadPath ends up in URLs, so always use forward slashes.
+		downloadPath := path.Join(filepath.Base(config.G.FilePath), r.URL.Path[1:])
+
+		fileInfo := sharedInfo
+		var fsys fs.FS
+		name := rootName(r.URL.Path)
+		if sharedInfo.IsDir() {
+			root, err := os.OpenRoot(config.G.FilePath)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			defer root.Close()
+			fsys = root.FS()
+			fileInfo, err = fs.Stat(fsys, name)
+			if err != nil {
+				if errors.Is(err, fs.ErrNotExist) {
+					http.NotFound(w, r)
+					return
+				}
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
 
 		data := struct {
@@ -153,15 +201,14 @@ func SendHandler(w http.ResponseWriter, r *http.Request) {
 
 		if fileInfo.IsDir() {
 			data.IsDir = true
-
-			files, err := os.ReadDir(realFilePath)
+			files, err := listDir(fsys, name)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			data.Files = files
 		} else {
-			data.FileName = filepath.Base(realFilePath)
+			data.FileName = fileInfo.Name()
 		}
 
 		tmpl, err := template.New("download").Parse(web.DownloadPage)
