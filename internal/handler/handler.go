@@ -35,8 +35,8 @@ func ReceiveHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	case http.MethodPost:
 		// receive file and save
-		if err := receiveUpload(r); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		if status, err := receiveUpload(r); err != nil {
+			http.Error(w, err.Error(), status)
 		}
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -45,11 +45,12 @@ func ReceiveHandler(w http.ResponseWriter, r *http.Request) {
 
 // receiveUpload streams every "file" part of a multipart request straight to
 // disk. Unlike r.FormFile it does not spool large uploads to a temporary file
-// first, so each upload is written to disk only once.
-func receiveUpload(r *http.Request) error {
+// first, so each upload is written to disk only once. On failure it returns
+// the HTTP status to report: 400 for a bad request, 500 if saving failed.
+func receiveUpload(r *http.Request) (int, error) {
 	mr, err := r.MultipartReader()
 	if err != nil {
-		return err
+		return http.StatusBadRequest, err
 	}
 	received := 0
 	for {
@@ -58,7 +59,7 @@ func receiveUpload(r *http.Request) error {
 			break
 		}
 		if err != nil {
-			return err
+			return http.StatusBadRequest, err
 		}
 		if part.FormName() != "file" {
 			part.Close()
@@ -68,26 +69,26 @@ func receiveUpload(r *http.Request) error {
 		// keep the folder structure of browser folder uploads.
 		_, params, err := mime.ParseMediaType(part.Header.Get("Content-Disposition"))
 		if err != nil {
-			return err
+			return http.StatusBadRequest, err
 		}
 		filename, err := util.SafeJoin(".", params["filename"])
 		if err != nil {
-			return err
+			return http.StatusBadRequest, err
 		}
 
 		fmt.Printf("Downloading [%s]...\n", filename)
 		saved, err := util.SaveFile(filename, part)
 		part.Close()
 		if err != nil {
-			return err
+			return http.StatusInternalServerError, err
 		}
 		fmt.Printf("[✅] Download [%s] Success.\n", saved)
 		received++
 	}
 	if received == 0 {
-		return errors.New("no file in request")
+		return http.StatusBadRequest, errors.New("no file in request")
 	}
-	return nil
+	return http.StatusOK, nil
 }
 
 func FileServerHandler(w http.ResponseWriter, r *http.Request) {

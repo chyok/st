@@ -208,3 +208,19 @@ func TestSymlinksCannotEscapeShare(t *testing.T) {
 		t.Errorf("advertised paths = %v, want %v", info.Paths, want)
 	}
 }
+
+func TestReceiveHandlerSaveFailureIs500(t *testing.T) {
+	t.Chdir(t.TempDir())
+	// A plain file where the upload needs a directory makes saving fail.
+	if err := os.WriteFile("blocked", nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	body, ctype := multipartBody(t, map[string]string{"blocked/a.txt": "x"})
+	req := httptest.NewRequest(http.MethodPost, "/", body)
+	req.Header.Set("Content-Type", ctype)
+	rec := httptest.NewRecorder()
+	ReceiveHandler(rec, req)
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("got %d, want 500", rec.Code)
+	}
+}
