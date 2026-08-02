@@ -1,14 +1,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	"github.com/chyok/st/config"
 	"github.com/chyok/st/internal/discovery"
 	"github.com/chyok/st/internal/handler"
+	"github.com/chyok/st/internal/util"
 	"github.com/chyok/st/web"
 	"github.com/skip2/go-qrcode"
 	"github.com/urfave/cli/v2"
@@ -34,12 +39,13 @@ func receiveClient() error {
 	fmt.Println(q.ToSmallString(false))
 	fmt.Printf("Server address: %s\n", address)
 
-	http.HandleFunc("/", handler.ReceiveHandler)
-	http.Handle("/static/", http.StripPrefix("/static/",
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", handler.ReceiveHandler)
+	mux.Handle("/static/", http.StripPrefix("/static/",
 		http.FileServer(http.FS(web.CssFs))))
 
 	fmt.Println("Waiting for transfer...")
-	return http.ListenAndServe(config.G.WildcardAddress, nil)
+	return serve(mux)
 }
 
 func sendClient() error {
@@ -54,12 +60,45 @@ func sendClient() error {
 	fmt.Println(q.ToSmallString(false))
 	fmt.Printf("Server address: %s\n", url)
 
-	http.HandleFunc("/", handler.SendHandler)
-	http.HandleFunc("/download/", handler.FileServerHandler)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", handler.SendHandler)
+	mux.HandleFunc("/download/", handler.FileServerHandler)
 
 	fmt.Println("Waiting for transfer...")
+	return serve(mux)
+}
 
-	return http.ListenAndServe(config.G.WildcardAddress, nil)
+// serve runs the HTTP server until it fails or the process is interrupted.
+// On Ctrl+C it gives in-flight requests a moment to finish, then cuts the
+// rest off and removes the temporary files of interrupted transfers.
+func serve(h http.Handler) error {
+	srv := &http.Server{
+		Addr:              config.G.WildcardAddress,
+		Handler:           h,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+		// No read/write timeouts: transfers of large files can take long.
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	errc := make(chan error, 1)
+	go func() { errc <- srv.ListenAndServe() }()
+	select {
+	case err := <-errc:
+		return err
+	case <-ctx.Done():
+	}
+	stop() // a second Ctrl+C exits immediately
+
+	fmt.Println("\nShutting down...")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		srv.Close()
+	}
+	util.RemovePartFiles()
+	return nil
 }
 
 func main() {

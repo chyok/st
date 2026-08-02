@@ -2,6 +2,7 @@ package util
 
 import (
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -124,5 +125,28 @@ func assertNoPartFiles(t *testing.T, dir string) {
 		if strings.HasSuffix(e.Name(), ".part") {
 			t.Errorf("leftover temp file %s", e.Name())
 		}
+	}
+}
+
+func TestRemovePartFilesCleansInterruptedSave(t *testing.T) {
+	dir := t.TempDir()
+	pr, pw := io.Pipe()
+	done := make(chan error, 1)
+	go func() {
+		_, err := SaveFile(filepath.Join(dir, "a.txt"), pr)
+		done <- err
+	}()
+	pw.Write([]byte("partial")) // returns once SaveFile is copying into its .part file
+
+	RemovePartFiles()
+	if entries, _ := os.ReadDir(dir); len(entries) != 0 {
+		t.Errorf("files left after RemovePartFiles: %v", entries)
+	}
+	pw.CloseWithError(errors.New("interrupted"))
+	if err := <-done; err == nil {
+		t.Error("SaveFile succeeded after interruption")
+	}
+	if entries, _ := os.ReadDir(dir); len(entries) != 0 {
+		t.Errorf("files left after failed save: %v", entries)
 	}
 }

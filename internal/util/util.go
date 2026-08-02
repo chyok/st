@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 // SafeJoin joins the untrusted relative path name onto base and returns an
@@ -64,6 +65,18 @@ func GetDirFilePaths(dirPath string, relativeOnly bool) ([]string, error) {
 	return filePaths, nil
 }
 
+// partFiles holds the temporary files of saves still in progress.
+var partFiles sync.Map
+
+// RemovePartFiles deletes the temporary files of all saves still in
+// progress, so interrupted transfers leave nothing behind on exit.
+func RemovePartFiles() {
+	partFiles.Range(func(name, _ any) bool {
+		os.Remove(name.(string))
+		return true
+	})
+}
+
 // SaveFile writes the contents of r to path and returns the path it actually
 // used. Data goes to a hidden ".part" file in the same directory first and is
 // moved into place only once fully written, so a failed transfer never leaves
@@ -83,6 +96,8 @@ func SaveFile(path string, r io.Reader) (string, error) {
 		return "", err
 	}
 	tmpName := tmp.Name()
+	partFiles.Store(tmpName, struct{}{})
+	defer partFiles.Delete(tmpName)
 	_, err = io.Copy(tmp, r)
 	if err == nil {
 		err = tmp.Chmod(0o644)
