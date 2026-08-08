@@ -12,13 +12,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Setup Go environment
-        uses: actions/setup-go@v4.1.0
-        with:
-          go-version: '^1.21.1'
-        
       - name: Checkout code
-        uses: actions/checkout@v3
-        
-      - name: Run
+        uses: actions/checkout@v7
+
+      - name: Setup Go environment
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race ./...
+
+      - name: Vulnerability check
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+      - name: Build
         run: make ci
