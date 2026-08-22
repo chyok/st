@@ -1,4 +1,5 @@
-FLAGS := -ldflags "-s -w" -trimpath
+VERSION ?=
+FLAGS = -ldflags "-s -w -X github.com/chyok/st/config.Version=$(VERSION)" -trimpath
 NOCGO := CGO_ENABLED=0
 
 ci:: build-all
@@ -15,7 +16,7 @@ build-all:: build
 	${NOCGO}  GOOS=darwin   GOARCH=amd64  go build ${FLAGS} -o builds/st-mac-x64
 	${NOCGO}  GOOS=darwin   GOARCH=arm64  go build ${FLAGS} -o builds/st-mac-arm64
 	${NOCGO}  GOOS=windows  GOARCH=amd64  go build ${FLAGS} -o builds/st-windows.exe
-	sha256sum builds/*
+	shasum -a 256 builds/*
 
 clean::
 	rm -f st

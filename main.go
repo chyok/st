@@ -124,7 +124,7 @@ func main() {
 		},
 		Action: func(c *cli.Context) error {
 			if c.Bool("version") {
-				fmt.Printf("st version %s\n", config.G.Version)
+				fmt.Printf("st version %s\n", config.CurrentVersion())
 				return nil
 			}
 

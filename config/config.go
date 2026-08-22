@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"runtime/debug"
+	"strings"
 )
 
 type Config struct {
@@ -13,10 +15,25 @@ type Config struct {
 	MulticastAddress string
 	WildcardAddress  string
 	FilePath         string
-	Version          string
 }
 
 var G Config
+
+// Version is set by release builds with
+// -ldflags "-X github.com/chyok/st/config.Version=<version>".
+var Version string
+
+// CurrentVersion reports Version if it was set at build time, otherwise the
+// module version Go recorded (as with "go install ...@v0.2.1"), else "dev".
+func CurrentVersion() string {
+	if Version != "" {
+		return Version
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok && bi.Main.Version != "" && bi.Main.Version != "(devel)" {
+		return strings.TrimPrefix(bi.Main.Version, "v")
+	}
+	return "dev"
+}
 
 func (c *Config) SetConf(port string) error {
 	Hostname, err := os.Hostname()
@@ -32,7 +49,6 @@ func (c *Config) SetConf(port string) error {
 	c.MulticastAddress = fmt.Sprintf("224.0.0.169:%s", port)
 	c.WildcardAddress = fmt.Sprintf("0.0.0.0:%s", port)
 	c.FilePath = ""
-	c.Version = "0.2.1"
 	return nil
 }
 
