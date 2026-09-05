@@ -20,17 +20,16 @@ import (
 	"github.com/chyok/st/web"
 )
 
+var (
+	uploadTmpl   = template.Must(template.New("upload").Parse(web.UploadPage))
+	downloadTmpl = template.Must(template.New("download").Parse(web.DownloadPage))
+)
+
 func ReceiveHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		// serve upload page for receive
-		tmpl, err := template.New("index").Parse(web.UploadPage)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		err = tmpl.Execute(w, config.G.DeviceName)
-		if err != nil {
+		if err := uploadTmpl.Execute(w, config.G.DeviceName); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	case http.MethodPost:
@@ -212,13 +211,7 @@ func SendHandler(w http.ResponseWriter, r *http.Request) {
 			data.FileName = fileInfo.Name()
 		}
 
-		tmpl, err := template.New("download").Parse(web.DownloadPage)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		err = tmpl.Execute(w, data)
-		if err != nil {
+		if err := downloadTmpl.Execute(w, data); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	case http.MethodPost:
