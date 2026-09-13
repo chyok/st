@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"runtime/debug"
+	"strconv"
 	"strings"
 )
 
@@ -35,7 +36,21 @@ func CurrentVersion() string {
 	return "dev"
 }
 
+// ParsePort checks that port is a number from 1 to 65535 and returns it in
+// canonical form (so "053333" becomes "53333").
+func ParsePort(port string) (string, error) {
+	n, err := strconv.Atoi(port)
+	if err != nil || n < 1 || n > 65535 {
+		return "", fmt.Errorf("invalid port %q: must be a number from 1 to 65535", port)
+	}
+	return strconv.Itoa(n), nil
+}
+
 func (c *Config) SetConf(port string) error {
+	port, err := ParsePort(port)
+	if err != nil {
+		return err
+	}
 	Hostname, err := os.Hostname()
 	if err != nil {
 		Hostname = "unknown device"
