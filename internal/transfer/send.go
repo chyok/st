@@ -14,7 +14,8 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
-func SendFiles(filePath string, url string) error {
+// SendFiles uploads filePath, a file or folder, to the st receiver at url.
+func (c *Client) SendFiles(filePath string, url string) error {
 	filePath = filepath.ToSlash(filePath)
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
@@ -25,18 +26,18 @@ func SendFiles(filePath string, url string) error {
 	}
 
 	if fileInfo.IsDir() {
-		return postDirectory(filePath, url)
+		return c.postDirectory(filePath, url)
 	}
 
 	name := path.Base(filePath)
-	if !confirm(fmt.Sprintf("\nFound receiver at %s\n", url), fmt.Sprintf("Send [%s]? [y/n] ", name)) {
+	if !c.confirm(fmt.Sprintf("\nFound receiver at %s\n", url), fmt.Sprintf("Send [%s]? [y/n] ", name)) {
 		fmt.Println("\nCancel send file")
 		return nil
 	}
 	return postFile(filePath, name, url)
 }
 
-func postDirectory(dirPath string, url string) error {
+func (c *Client) postDirectory(dirPath string, url string) error {
 	files, err := util.GetDirFilePaths(dirPath, false)
 	if err != nil {
 		return err
@@ -47,7 +48,7 @@ func postDirectory(dirPath string, url string) error {
 	for _, file := range files {
 		details.WriteString(file + "\n")
 	}
-	if !confirm(details.String(), "\nTransfer all files? [Y/N] ") {
+	if !c.confirm(details.String(), "\nTransfer all files? [Y/N] ") {
 		fmt.Println("\nCancel send all files")
 		return nil
 	}

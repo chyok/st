@@ -2,6 +2,7 @@ package config
 
 import "testing"
 
+// Not parallel: it sets the package-level Version.
 func TestCurrentVersion(t *testing.T) {
 	t.Cleanup(func() { Version = "" })
 
@@ -16,6 +17,7 @@ func TestCurrentVersion(t *testing.T) {
 }
 
 func TestParsePort(t *testing.T) {
+	t.Parallel()
 	ok := map[string]string{"1": "1", "53333": "53333", "053333": "53333", "65535": "65535"}
 	for in, want := range ok {
 		if got, err := ParsePort(in); err != nil || got != want {

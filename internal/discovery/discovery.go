@@ -18,16 +18,18 @@ const (
 	Receiver Role = "receiver"
 )
 
-func Listen(role Role, filePath string) {
-	addr, err := net.ResolveUDPAddr("udp", config.G.MulticastAddress)
+// Listen reacts to announcements from peers of the given role: it receives
+// from senders, or sends cfg.FilePath to receivers.
+func Listen(cfg *config.Config, client *transfer.Client, role Role) {
+	addr, err := net.ResolveUDPAddr("udp", cfg.MulticastAddress)
 
 	if err != nil {
-		fmt.Printf("Failed to resolve %s: %v\n", config.G.MulticastAddress, err)
+		fmt.Printf("Failed to resolve %s: %v\n", cfg.MulticastAddress, err)
 		return
 	}
 	conn, err := net.ListenMulticastUDP("udp", nil, addr)
 	if err != nil {
-		fmt.Printf("Failed to listen on %s: %v\n", config.G.MulticastAddress, err)
+		fmt.Printf("Failed to listen on %s: %v\n", cfg.MulticastAddress, err)
 		return
 	}
 	defer conn.Close()
@@ -36,11 +38,11 @@ func Listen(role Role, filePath string) {
 	for {
 		n, src, err := conn.ReadFromUDP(buf)
 		if err != nil {
-			fmt.Printf("Failed to read from %s: %v\n", config.G.MulticastAddress, err)
+			fmt.Printf("Failed to read from %s: %v\n", cfg.MulticastAddress, err)
 			continue
 		}
 
-		remoteAddr := src.IP.String() + ":" + config.G.Port
+		remoteAddr := src.IP.String() + ":" + cfg.Port
 
 		message := string(buf[:n])
 		parts := strings.Split(message, separator)
@@ -56,7 +58,7 @@ func Listen(role Role, filePath string) {
 			if role == Sender {
 				fmt.Printf("Discovered Sender: %s (%s)\n", deviceName, remoteAddr)
 				go func() {
-					err := transfer.ReceiveFiles(remoteAddr)
+					err := client.ReceiveFiles(remoteAddr)
 					if err != nil {
 						fmt.Printf("Receive file from %s error: %s\n", remoteAddr, err)
 					}
@@ -66,7 +68,7 @@ func Listen(role Role, filePath string) {
 			if role == Receiver {
 				fmt.Printf("Discovered Receiver: %s (%s)\n", deviceName, remoteAddr)
 				go func() {
-					err := transfer.SendFiles(filePath, fmt.Sprintf("http://%s", remoteAddr))
+					err := client.SendFiles(cfg.FilePath, fmt.Sprintf("http://%s", remoteAddr))
 					if err != nil {
 						fmt.Printf("Send file to %s error: %s\n", remoteAddr, err)
 					}
@@ -76,26 +78,27 @@ func Listen(role Role, filePath string) {
 	}
 }
 
-func Send(role Role) {
-	addr, err := net.ResolveUDPAddr("udp", config.G.MulticastAddress)
+// Send announces this instance on the multicast group.
+func Send(cfg *config.Config, role Role) {
+	addr, err := net.ResolveUDPAddr("udp", cfg.MulticastAddress)
 	if err != nil {
-		fmt.Printf("Failed to resolve %s: %v\n", config.G.MulticastAddress, err)
+		fmt.Printf("Failed to resolve %s: %v\n", cfg.MulticastAddress, err)
 		return
 	}
 
-	localAddr, err := net.ResolveUDPAddr("udp", config.G.LocalIP+":0")
+	localAddr, err := net.ResolveUDPAddr("udp", cfg.LocalIP+":0")
 	if err != nil {
-		fmt.Printf("Failed to resolve %s: %v\n", config.G.MulticastAddress, err)
+		fmt.Printf("Failed to resolve %s: %v\n", cfg.MulticastAddress, err)
 		return
 	}
 
 	conn, err := net.DialUDP("udp", localAddr, addr)
 	if err != nil {
-		fmt.Printf("Failed to dial %s: %v\n", config.G.MulticastAddress, err)
+		fmt.Printf("Failed to dial %s: %v\n", cfg.MulticastAddress, err)
 		return
 	}
 	defer conn.Close()
 
-	message := fmt.Sprintf("%s%s%s", config.G.DeviceName, separator, role)
+	message := fmt.Sprintf("%s%s%s", cfg.DeviceName, separator, role)
 	conn.Write([]byte(message))
 }

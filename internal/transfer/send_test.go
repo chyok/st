@@ -12,6 +12,7 @@ import (
 )
 
 func TestPostFileStreamsContent(t *testing.T) {
+	t.Parallel()
 	data := make([]byte, 3<<20)
 	if _, err := rand.Read(data); err != nil {
 		t.Fatal(err)
@@ -47,6 +48,7 @@ func TestPostFileStreamsContent(t *testing.T) {
 }
 
 func TestPostFileReportsServerError(t *testing.T) {
+	t.Parallel()
 	src := filepath.Join(t.TempDir(), "a.txt")
 	os.WriteFile(src, []byte("x"), 0o644)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

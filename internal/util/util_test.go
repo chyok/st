@@ -11,6 +11,7 @@ import (
 )
 
 func TestSafeJoin(t *testing.T) {
+	t.Parallel()
 	base := filepath.FromSlash("/tmp/base")
 	ok := map[string]string{
 		"a.txt":         "/tmp/base/a.txt",
@@ -38,6 +39,7 @@ func TestSafeJoin(t *testing.T) {
 }
 
 func TestGetDirFilePathsRelativeKeepsSubdirs(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "share")
 	for _, f := range []string{"top.txt", "sub/deep.txt", "sub/more/deeper.txt"} {
 		p := filepath.Join(root, filepath.FromSlash(f))
@@ -60,6 +62,7 @@ func TestGetDirFilePathsRelativeKeepsSubdirs(t *testing.T) {
 }
 
 func TestSaveFileNeverOverwrites(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	target := filepath.Join(dir, "sub", "a.txt")
 	want := []string{"a.txt", "a (1).txt", "a (2).txt"}
@@ -82,6 +85,7 @@ func TestSaveFileNeverOverwrites(t *testing.T) {
 }
 
 func TestSaveFileDotfile(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	target := filepath.Join(dir, ".bashrc")
 	SaveFile(target, strings.NewReader("1"))
@@ -105,6 +109,7 @@ func (r *failingReader) Read(p []byte) (int, error) {
 }
 
 func TestSaveFileFailureLeavesNothing(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	if _, err := SaveFile(filepath.Join(dir, "a.txt"), &failingReader{n: 2}); err == nil {
 		t.Fatal("expected error")
@@ -128,6 +133,7 @@ func assertNoPartFiles(t *testing.T, dir string) {
 	}
 }
 
+// Not parallel: RemovePartFiles would delete other tests' in-progress saves.
 func TestRemovePartFilesCleansInterruptedSave(t *testing.T) {
 	dir := t.TempDir()
 	pr, pw := io.Pipe()

@@ -14,11 +14,10 @@ import (
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/chyok/st/config"
 )
 
 func TestFileServerHandlerDir(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "share")
 	if err := os.MkdirAll(filepath.Join(root, "sub"), 0o755); err != nil {
 		t.Fatal(err)
@@ -26,7 +25,7 @@ func TestFileServerHandlerDir(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "sub", "a.txt"), []byte("hello"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	config.G.FilePath = root
+	h := (&Sender{Path: root}).Routes()
 
 	cases := map[string]int{
 		"/download/share/sub/a.txt": http.StatusOK,
@@ -37,7 +36,7 @@ func TestFileServerHandlerDir(t *testing.T) {
 	}
 	for path, want := range cases {
 		rec := httptest.NewRecorder()
-		FileServerHandler(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 		if rec.Code != want {
 			t.Errorf("GET %s = %d, want %d", path, rec.Code, want)
 		}
@@ -45,6 +44,7 @@ func TestFileServerHandlerDir(t *testing.T) {
 }
 
 func TestSendHandlerMissingPathIs404(t *testing.T) {
+	t.Parallel()
 	dir := filepath.Join(t.TempDir(), "share")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
@@ -65,9 +65,9 @@ func TestSendHandlerMissingPathIs404(t *testing.T) {
 		{file, "/favicon.ico", http.StatusNotFound},
 	}
 	for _, c := range cases {
-		config.G.FilePath = c.shared
+		h := (&Sender{Path: c.shared}).Routes()
 		rec := httptest.NewRecorder()
-		SendHandler(rec, httptest.NewRequest(http.MethodGet, c.path, nil))
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, c.path, nil))
 		if rec.Code != c.want {
 			t.Errorf("sharing %s: GET %s = %d, want %d", filepath.Base(c.shared), c.path, rec.Code, c.want)
 		}
@@ -94,8 +94,10 @@ func multipartBody(t *testing.T, files map[string]string) (*bytes.Buffer, string
 }
 
 func TestReceiveHandlerUpload(t *testing.T) {
-	t.Chdir(t.TempDir())
-	if err := os.WriteFile("exists.txt", []byte("old"), 0o644); err != nil {
+	t.Parallel()
+	dir := t.TempDir()
+	h := (&Receiver{Dir: dir}).Routes()
+	if err := os.WriteFile(filepath.Join(dir, "exists.txt"), []byte("old"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -106,7 +108,7 @@ func TestReceiveHandlerUpload(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/", body)
 	req.Header.Set("Content-Type", ctype)
 	rec := httptest.NewRecorder()
-	ReceiveHandler(rec, req)
+	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("upload = %d %s", rec.Code, rec.Body)
 	}
@@ -116,7 +118,7 @@ func TestReceiveHandlerUpload(t *testing.T) {
 		"exists.txt":       "old",   // existing file untouched
 		"exists (1).txt":   "new",
 	} {
-		got, err := os.ReadFile(filepath.FromSlash(path))
+		got, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(path)))
 		if err != nil || string(got) != want {
 			t.Errorf("%s = %q, %v; want %q", path, got, err, want)
 		}
@@ -124,7 +126,9 @@ func TestReceiveHandlerUpload(t *testing.T) {
 }
 
 func TestReceiveHandlerRejectsBadUploads(t *testing.T) {
-	t.Chdir(t.TempDir())
+	t.Parallel()
+	dir := t.TempDir()
+	h := (&Receiver{Dir: dir}).Routes()
 	cases := map[string]map[string]string{
 		"path traversal": {"../escape.txt": "x"},
 		"absolute path":  {"/tmp/escape.txt": "x"},
@@ -135,12 +139,12 @@ func TestReceiveHandlerRejectsBadUploads(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/", body)
 		req.Header.Set("Content-Type", ctype)
 		rec := httptest.NewRecorder()
-		ReceiveHandler(rec, req)
+		h.ServeHTTP(rec, req)
 		if rec.Code != http.StatusBadRequest {
 			t.Errorf("%s: got %d, want 400", name, rec.Code)
 		}
 	}
-	if _, err := os.Stat(filepath.Join("..", "escape.txt")); err == nil {
+	if _, err := os.Stat(filepath.Join(dir, "..", "escape.txt")); err == nil {
 		t.Error("upload escaped the receive directory")
 	}
 }
@@ -174,32 +178,33 @@ func shareWithEscapingLinks(t *testing.T) string {
 }
 
 func TestSymlinksCannotEscapeShare(t *testing.T) {
-	config.G.FilePath = shareWithEscapingLinks(t)
+	t.Parallel()
+	h := (&Sender{Path: shareWithEscapingLinks(t)}).Routes()
 
-	get := func(h http.HandlerFunc, method, path string) *httptest.ResponseRecorder {
+	get := func(method, path string) *httptest.ResponseRecorder {
 		rec := httptest.NewRecorder()
-		h(rec, httptest.NewRequest(method, path, nil))
+		h.ServeHTTP(rec, httptest.NewRequest(method, path, nil))
 		return rec
 	}
 
-	if rec := get(FileServerHandler, http.MethodGet, "/download/share/inner-link"); rec.Code != http.StatusOK || rec.Body.String() != "ok" {
+	if rec := get(http.MethodGet, "/download/share/inner-link"); rec.Code != http.StatusOK || rec.Body.String() != "ok" {
 		t.Errorf("link inside share = %d %q, want 200 \"ok\"", rec.Code, rec.Body)
 	}
 	for _, p := range []string{"/download/share/file-link", "/download/share/dir-link/key", "/download/share/dir-link"} {
-		if rec := get(FileServerHandler, http.MethodGet, p); rec.Code == http.StatusOK || strings.Contains(rec.Body.String(), "SECRET") || strings.Contains(rec.Body.String(), "key") {
+		if rec := get(http.MethodGet, p); rec.Code == http.StatusOK || strings.Contains(rec.Body.String(), "SECRET") || strings.Contains(rec.Body.String(), "key") {
 			t.Errorf("GET %s = %d %q, want it refused", p, rec.Code, rec.Body)
 		}
 	}
-	page := get(SendHandler, http.MethodGet, "/").Body.String()
+	page := get(http.MethodGet, "/").Body.String()
 	if !strings.Contains(page, "inner-link") || strings.Contains(page, "file-link") || strings.Contains(page, "dir-link") {
 		t.Errorf("listing should show inner-link only among links:\n%s", page)
 	}
-	if rec := get(SendHandler, http.MethodGet, "/dir-link"); rec.Code == http.StatusOK {
+	if rec := get(http.MethodGet, "/dir-link"); rec.Code == http.StatusOK {
 		t.Errorf("listing a directory outside the share = %d, want refused", rec.Code)
 	}
 
 	var info struct{ Paths []string }
-	rec := get(SendHandler, http.MethodPost, "/")
+	rec := get(http.MethodPost, "/")
 	if err := json.NewDecoder(rec.Body).Decode(&info); err != nil {
 		t.Fatal(err)
 	}
@@ -210,17 +215,48 @@ func TestSymlinksCannotEscapeShare(t *testing.T) {
 }
 
 func TestReceiveHandlerSaveFailureIs500(t *testing.T) {
-	t.Chdir(t.TempDir())
+	t.Parallel()
+	dir := t.TempDir()
+	h := (&Receiver{Dir: dir}).Routes()
 	// A plain file where the upload needs a directory makes saving fail.
-	if err := os.WriteFile("blocked", nil, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "blocked"), nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	body, ctype := multipartBody(t, map[string]string{"blocked/a.txt": "x"})
 	req := httptest.NewRequest(http.MethodPost, "/", body)
 	req.Header.Set("Content-Type", ctype)
 	rec := httptest.NewRecorder()
-	ReceiveHandler(rec, req)
+	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("got %d, want 500", rec.Code)
+	}
+}
+
+func TestRoutesRejectOtherMethods(t *testing.T) {
+	t.Parallel()
+	for name, h := range map[string]http.Handler{
+		"receiver": (&Receiver{Dir: t.TempDir()}).Routes(),
+		"sender":   (&Sender{Path: t.TempDir()}).Routes(),
+	} {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/", nil))
+		if rec.Code != http.StatusMethodNotAllowed {
+			t.Errorf("%s: PUT / = %d, want 405", name, rec.Code)
+		}
+	}
+}
+
+func TestReceiverServesPageAndStatic(t *testing.T) {
+	t.Parallel()
+	h := (&Receiver{DeviceName: "<my-box>", Dir: t.TempDir()}).Routes()
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "&lt;my-box&gt;") {
+		t.Errorf("upload page = %d, want 200 with the escaped device name", rec.Code)
+	}
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/static/css/upload.css", nil))
+	if rec.Code != http.StatusOK {
+		t.Errorf("static css = %d, want 200", rec.Code)
 	}
 }

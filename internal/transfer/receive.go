@@ -12,7 +12,23 @@ import (
 	"github.com/chyok/st/internal/util"
 )
 
-func ReceiveFiles(remoteAddr string) error {
+// Client transfers files to and from other st instances found by discovery.
+type Client struct {
+	// Dir is where received files are saved.
+	Dir string
+	// Confirm asks the user whether to go ahead; nil asks on stdin.
+	Confirm func(details, question string) bool
+}
+
+func (c *Client) confirm(details, question string) bool {
+	if c.Confirm != nil {
+		return c.Confirm(details, question)
+	}
+	return confirm(details, question)
+}
+
+// ReceiveFiles fetches everything the st sender at remoteAddr is sharing.
+func (c *Client) ReceiveFiles(remoteAddr string) error {
 
 	resp, err := http.Post(fmt.Sprintf("http://%s/", remoteAddr), "", nil)
 	if err != nil {
@@ -39,11 +55,11 @@ func ReceiveFiles(remoteAddr string) error {
 		for _, path := range pathInfo.Paths {
 			fmt.Fprintf(&details, "- %s\n", path)
 		}
-		if !confirm(details.String(), "Do you want to download the entire directory? [y/n] ") {
+		if !c.confirm(details.String(), "Do you want to download the entire directory? [y/n] ") {
 			return nil
 		}
 		for _, path := range pathInfo.Paths {
-			if err := downloadFile(remoteAddr, path); err != nil {
+			if err := c.downloadFile(remoteAddr, path); err != nil {
 				return err
 			}
 		}
@@ -52,19 +68,19 @@ func ReceiveFiles(remoteAddr string) error {
 			return fmt.Errorf("unexpected number of paths: %d", len(pathInfo.Paths))
 		}
 		details := fmt.Sprintf("\nFound sender at %s offering file: %s\n", remoteAddr, pathInfo.Paths[0])
-		if !confirm(details, "Download it? [y/n] ") {
+		if !c.confirm(details, "Download it? [y/n] ") {
 			return nil
 		}
-		if err := downloadFile(remoteAddr, pathInfo.Paths[0]); err != nil {
+		if err := c.downloadFile(remoteAddr, pathInfo.Paths[0]); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func downloadFile(remoteAddr, path string) error {
+func (c *Client) downloadFile(remoteAddr, path string) error {
 	path = filepath.ToSlash(path)
-	localPath, err := util.SafeJoin(".", path)
+	localPath, err := util.SafeJoin(c.Dir, path)
 	if err != nil {
 		return err
 	}

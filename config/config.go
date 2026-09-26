@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+// Config describes this st instance. main builds one and hands it to the
+// parts that need it.
 type Config struct {
 	DeviceName       string
 	Port             string
@@ -17,8 +19,6 @@ type Config struct {
 	WildcardAddress  string
 	FilePath         string
 }
-
-var G Config
 
 // Version is set by release builds with
 // -ldflags "-X github.com/chyok/st/config.Version=<version>".
@@ -46,25 +46,28 @@ func ParsePort(port string) (string, error) {
 	return strconv.Itoa(n), nil
 }
 
-func (c *Config) SetConf(port string) error {
+// New returns the configuration for serving on port. FilePath is left empty;
+// the caller sets it when sharing a file or folder.
+func New(port string) (*Config, error) {
 	port, err := ParsePort(port)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	Hostname, err := os.Hostname()
+	hostname, err := os.Hostname()
 	if err != nil {
-		Hostname = "unknown device"
+		hostname = "unknown device"
 	}
-	c.DeviceName = Hostname
-	c.Port = port
-	c.LocalIP, err = getLocalIP()
+	localIP, err := getLocalIP()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	c.MulticastAddress = fmt.Sprintf("224.0.0.169:%s", port)
-	c.WildcardAddress = fmt.Sprintf("0.0.0.0:%s", port)
-	c.FilePath = ""
-	return nil
+	return &Config{
+		DeviceName:       hostname,
+		Port:             port,
+		LocalIP:          localIP,
+		MulticastAddress: fmt.Sprintf("224.0.0.169:%s", port),
+		WildcardAddress:  fmt.Sprintf("0.0.0.0:%s", port),
+	}, nil
 }
 
 func getLocalIP() (string, error) {

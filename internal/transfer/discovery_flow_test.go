@@ -5,21 +5,19 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync/atomic"
 	"testing"
 
-	"github.com/chyok/st/config"
 	"github.com/chyok/st/internal/handler"
 )
 
-func setStdin(t *testing.T, input string) {
-	t.Helper()
-	stdin, reader = strings.NewReader(input), nil
-	t.Cleanup(func() { stdin, reader = nil, nil })
+// answer returns a Confirm func that always gives the same answer.
+func answer(yes bool) func(string, string) bool {
+	return func(string, string) bool { return yes }
 }
 
 func TestSendFilesSingleFileAsksFirst(t *testing.T) {
+	t.Parallel()
 	src := filepath.Join(t.TempDir(), "a.txt")
 	if err := os.WriteFile(src, []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
@@ -31,16 +29,16 @@ func TestSendFilesSingleFileAsksFirst(t *testing.T) {
 	defer srv.Close()
 
 	for _, c := range []struct {
-		answer string
-		want   int32
-	}{{"n\n", 0}, {"y\n", 1}} {
+		yes  bool
+		want int32
+	}{{false, 0}, {true, 1}} {
 		uploads.Store(0)
-		setStdin(t, c.answer)
-		if err := SendFiles(src, srv.URL); err != nil {
+		client := &Client{Confirm: answer(c.yes)}
+		if err := client.SendFiles(src, srv.URL); err != nil {
 			t.Fatal(err)
 		}
 		if got := uploads.Load(); got != c.want {
-			t.Errorf("answer %q: %d uploads, want %d", strings.TrimSpace(c.answer), got, c.want)
+			t.Errorf("confirm=%v: %d uploads, want %d", c.yes, got, c.want)
 		}
 	}
 }
@@ -49,41 +47,37 @@ func TestSendFilesSingleFileAsksFirst(t *testing.T) {
 // running "st <shared>" would.
 func startSender(t *testing.T, shared string) string {
 	t.Helper()
-	config.G.FilePath = shared
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handler.SendHandler)
-	mux.HandleFunc("/download/", handler.FileServerHandler)
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer((&handler.Sender{Path: shared}).Routes())
 	t.Cleanup(srv.Close)
 	return srv.Listener.Addr().String()
 }
 
 func TestReceiveFilesSingleFile(t *testing.T) {
+	t.Parallel()
 	src := filepath.Join(t.TempDir(), "a.txt")
 	if err := os.WriteFile(src, []byte("hello"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	addr := startSender(t, src)
-	t.Chdir(t.TempDir())
+	dir := t.TempDir()
 
-	setStdin(t, "n\n")
-	if err := ReceiveFiles(addr); err != nil {
+	if err := (&Client{Dir: dir, Confirm: answer(false)}).ReceiveFiles(addr); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat("a.txt"); err == nil {
+	if _, err := os.Stat(filepath.Join(dir, "a.txt")); err == nil {
 		t.Fatal("file downloaded although the prompt was declined")
 	}
 
-	setStdin(t, "y\n")
-	if err := ReceiveFiles(addr); err != nil {
+	if err := (&Client{Dir: dir, Confirm: answer(true)}).ReceiveFiles(addr); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := os.ReadFile("a.txt"); err != nil || string(got) != "hello" {
+	if got, err := os.ReadFile(filepath.Join(dir, "a.txt")); err != nil || string(got) != "hello" {
 		t.Errorf("a.txt = %q, %v; want %q", got, err, "hello")
 	}
 }
 
 func TestReceiveFilesDirectoryWithSpecialNames(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "share")
 	files := map[string]string{
 		"plain.txt":         "1",
@@ -100,14 +94,13 @@ func TestReceiveFilesDirectoryWithSpecialNames(t *testing.T) {
 		}
 	}
 	addr := startSender(t, root)
-	t.Chdir(t.TempDir())
+	dir := t.TempDir()
 
-	setStdin(t, "y\n")
-	if err := ReceiveFiles(addr); err != nil {
+	if err := (&Client{Dir: dir, Confirm: answer(true)}).ReceiveFiles(addr); err != nil {
 		t.Fatal(err)
 	}
 	for name, want := range files {
-		got, err := os.ReadFile(filepath.Join("share", filepath.FromSlash(name)))
+		got, err := os.ReadFile(filepath.Join(dir, "share", filepath.FromSlash(name)))
 		if err != nil || string(got) != want {
 			t.Errorf("%s = %q, %v; want %q", name, got, err, want)
 		}

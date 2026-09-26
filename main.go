@@ -13,8 +13,8 @@ import (
 	"github.com/chyok/st/config"
 	"github.com/chyok/st/internal/discovery"
 	"github.com/chyok/st/internal/handler"
+	"github.com/chyok/st/internal/transfer"
 	"github.com/chyok/st/internal/util"
-	"github.com/chyok/st/web"
 	"github.com/skip2/go-qrcode"
 	"github.com/urfave/cli/v2"
 )
@@ -23,57 +23,47 @@ var (
 	port string
 )
 
-func initConfig(c *cli.Context) error {
-	return config.G.SetConf(port)
-}
-
-func receiveClient() error {
-	go discovery.Send(discovery.Receiver)
-	go discovery.Listen(discovery.Sender, "")
-
-	address := fmt.Sprintf("http://%s:%s", config.G.LocalIP, config.G.Port)
+func printAddress(cfg *config.Config) error {
+	address := fmt.Sprintf("http://%s:%s", cfg.LocalIP, cfg.Port)
 	q, err := qrcode.New(address, qrcode.Low)
 	if err != nil {
 		return err
 	}
 	fmt.Println(q.ToSmallString(false))
 	fmt.Printf("Server address: %s\n", address)
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handler.ReceiveHandler)
-	mux.Handle("/static/", http.StripPrefix("/static/",
-		http.FileServer(http.FS(web.CssFs))))
-
-	fmt.Println("Waiting for transfer...")
-	return serve(mux)
+	return nil
 }
 
-func sendClient() error {
-	go discovery.Send(discovery.Sender)
-	go discovery.Listen(discovery.Receiver, config.G.FilePath)
+func receiveClient(cfg *config.Config, client *transfer.Client) error {
+	go discovery.Send(cfg, discovery.Receiver)
+	go discovery.Listen(cfg, client, discovery.Sender)
 
-	url := fmt.Sprintf("http://%s:%s", config.G.LocalIP, config.G.Port)
-	q, err := qrcode.New(url, qrcode.Low)
-	if err != nil {
+	if err := printAddress(cfg); err != nil {
 		return err
 	}
-	fmt.Println(q.ToSmallString(false))
-	fmt.Printf("Server address: %s\n", url)
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handler.SendHandler)
-	mux.HandleFunc("/download/", handler.FileServerHandler)
-
+	h := &handler.Receiver{DeviceName: cfg.DeviceName, Dir: client.Dir}
 	fmt.Println("Waiting for transfer...")
-	return serve(mux)
+	return serve(cfg, h.Routes())
+}
+
+func sendClient(cfg *config.Config, client *transfer.Client) error {
+	go discovery.Send(cfg, discovery.Sender)
+	go discovery.Listen(cfg, client, discovery.Receiver)
+
+	if err := printAddress(cfg); err != nil {
+		return err
+	}
+	h := &handler.Sender{DeviceName: cfg.DeviceName, Path: cfg.FilePath}
+	fmt.Println("Waiting for transfer...")
+	return serve(cfg, h.Routes())
 }
 
 // serve runs the HTTP server until it fails or the process is interrupted.
 // On Ctrl+C it gives in-flight requests a moment to finish, then cuts the
 // rest off and removes the temporary files of interrupted transfers.
-func serve(h http.Handler) error {
+func serve(cfg *config.Config, h http.Handler) error {
 	srv := &http.Server{
-		Addr:              config.G.WildcardAddress,
+		Addr:              cfg.WildcardAddress,
 		Handler:           h,
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       2 * time.Minute,
@@ -128,23 +118,26 @@ func main() {
 				return nil
 			}
 
+			cfg, err := config.New(port)
+			if err != nil {
+				return err
+			}
+			client := &transfer.Client{Dir: "."}
+
 			if c.NArg() > 0 {
 				currentPath := filepath.ToSlash(c.Args().Get(0))
 				absPath, err := filepath.Abs(currentPath)
 				if err != nil {
-					fmt.Printf("File error: %s\n", err)
-					return nil
+					return fmt.Errorf("file error: %w", err)
 				}
-				if _, err := os.Stat(absPath); os.IsNotExist(err) {
-					fmt.Printf("File or Folder not exist: %s\n", err)
-					return nil
+				if _, err := os.Stat(absPath); err != nil {
+					return fmt.Errorf("file or folder not found: %w", err)
 				}
-				config.G.FilePath = absPath
-				return sendClient()
+				cfg.FilePath = absPath
+				return sendClient(cfg, client)
 			}
-			return receiveClient()
+			return receiveClient(cfg, client)
 		},
-		Before: initConfig,
 	}
 	if err := app.Run(os.Args); err != nil {
 		fmt.Println(err.Error())
