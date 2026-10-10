@@ -1,11 +1,9 @@
 package transfer
 
 import (
-	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"sync/atomic"
 	"testing"
 
 	"github.com/chyok/st/internal/handler"
@@ -14,33 +12,6 @@ import (
 // answer returns a Confirm func that always gives the same answer.
 func answer(yes bool) func(string, string) bool {
 	return func(string, string) bool { return yes }
-}
-
-func TestSendFilesSingleFileAsksFirst(t *testing.T) {
-	t.Parallel()
-	src := filepath.Join(t.TempDir(), "a.txt")
-	if err := os.WriteFile(src, []byte("x"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	var uploads atomic.Int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		uploads.Add(1)
-	}))
-	defer srv.Close()
-
-	for _, c := range []struct {
-		yes  bool
-		want int32
-	}{{false, 0}, {true, 1}} {
-		uploads.Store(0)
-		client := &Client{Confirm: answer(c.yes)}
-		if err := client.SendFiles(src, srv.URL); err != nil {
-			t.Fatal(err)
-		}
-		if got := uploads.Load(); got != c.want {
-			t.Errorf("confirm=%v: %d uploads, want %d", c.yes, got, c.want)
-		}
-	}
 }
 
 // startSender serves shared through the real send handlers, the way a peer

@@ -3,16 +3,17 @@ package transfer
 import (
 	"encoding/json"
 	"fmt"
-
+	"io"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"strings"
 
 	"github.com/chyok/st/internal/util"
+	"github.com/schollz/progressbar/v3"
 )
 
-// Client transfers files to and from other st instances found by discovery.
+// Client fetches files from other st instances found by discovery.
 type Client struct {
 	// Dir is where received files are saved.
 	Dir string
@@ -100,8 +101,8 @@ func (c *Client) downloadFile(remoteAddr, path string) error {
 		return fmt.Errorf("failed to download file: %s", resp.Status)
 	}
 
-	fmt.Printf("Downloading [%s]...\n", path)
-	saved, err := util.SaveFile(localPath, resp.Body)
+	bar := progressbar.DefaultBytes(resp.ContentLength, fmt.Sprintf("Downloading [%s]", path))
+	saved, err := util.SaveFile(localPath, io.TeeReader(resp.Body, bar))
 	if err != nil {
 		return err
 	}

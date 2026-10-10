@@ -34,9 +34,20 @@ func printAddress(cfg *config.Config) error {
 	return nil
 }
 
+// runDiscovery finds other st instances; the transfer still works through
+// the web page or QR code if it fails, so it only reports the error.
+func runDiscovery(cfg *config.Config, role discovery.Role, receive func(discovery.Announcement, string)) {
+	if err := discovery.Run(cfg, role, receive); err != nil {
+		fmt.Printf("Device discovery stopped: %v\n", err)
+	}
+}
+
 func receiveClient(cfg *config.Config, client *transfer.Client) error {
-	go discovery.Send(cfg, discovery.Receiver)
-	go discovery.Listen(cfg, client, discovery.Sender)
+	go runDiscovery(cfg, discovery.Receiver, func(peer discovery.Announcement, addr string) {
+		if err := client.ReceiveFiles(addr); err != nil {
+			fmt.Printf("Receive file from %s error: %s\n", addr, err)
+		}
+	})
 
 	if err := printAddress(cfg); err != nil {
 		return err
@@ -46,9 +57,8 @@ func receiveClient(cfg *config.Config, client *transfer.Client) error {
 	return serve(cfg, h.Routes())
 }
 
-func sendClient(cfg *config.Config, client *transfer.Client) error {
-	go discovery.Send(cfg, discovery.Sender)
-	go discovery.Listen(cfg, client, discovery.Receiver)
+func sendClient(cfg *config.Config) error {
+	go runDiscovery(cfg, discovery.Sender, nil)
 
 	if err := printAddress(cfg); err != nil {
 		return err
@@ -122,8 +132,6 @@ func main() {
 			if err != nil {
 				return err
 			}
-			client := &transfer.Client{Dir: "."}
-
 			if c.NArg() > 0 {
 				currentPath := filepath.ToSlash(c.Args().Get(0))
 				absPath, err := filepath.Abs(currentPath)
@@ -134,9 +142,9 @@ func main() {
 					return fmt.Errorf("file or folder not found: %w", err)
 				}
 				cfg.FilePath = absPath
-				return sendClient(cfg, client)
+				return sendClient(cfg)
 			}
-			return receiveClient(cfg, client)
+			return receiveClient(cfg, &transfer.Client{Dir: "."})
 		},
 	}
 	if err := app.Run(os.Args); err != nil {
