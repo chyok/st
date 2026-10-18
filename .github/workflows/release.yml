@@ -1,7 +1,8 @@
 name: Release
 
-# Publishing a release on GitHub builds the binaries for its tag and
-# attaches them to the release, named like st-0.2.1-linux-x64.
+# Publishing a release on GitHub builds the binaries for its tag with
+# GoReleaser (.goreleaser.yaml) and attaches them to that release. The
+# release's title and notes are left as written.
 on:
   release:
     types: [ published ]
@@ -16,6 +17,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Setup Go environment
         uses: actions/setup-go@v7
@@ -26,18 +29,20 @@ jobs:
         run: go test -race ./...
 
       - name: Build
-        env:
-          TAG: ${{ github.event.release.tag_name }}
-        run: |
-          version="${TAG#v}"
-          make build-all VERSION="$version"
-          cd builds
-          for f in st-*; do mv "$f" "st-${version}-${f#st-}"; done
-          sha256sum st-* > sha256sums.txt
-          ls -l
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean --skip=publish
 
       - name: Upload to release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$TAG" builds/* --clobber
+        run: |
+          mkdir release
+          jq -r '.[] | select(.type == "Binary" and (.name | startswith("st-"))) | "\(.path)\t\(.name)"' dist/artifacts.json |
+            while IFS=$'\t' read -r src name; do cp "$src" "release/$name"; done
+          cp dist/sha256sums.txt release/
+          ls -l release
+          gh release upload "$TAG" release/* --clobber

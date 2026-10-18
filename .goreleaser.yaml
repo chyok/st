@@ -1,0 +1,33 @@
+version: 2
+
+builds:
+  - binary: st
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/chyok/st/config.Version={{ .Version }}
+    goos: [ linux, darwin, windows ]
+    goarch: [ amd64, arm64, arm ]
+    goarm: [ "7" ]
+    ignore:
+      - { goos: darwin, goarch: arm }
+      - { goos: windows, goarch: arm }
+      - { goos: windows, goarch: arm64 }
+
+# Plain binaries named like earlier releases: st-0.2.1-linux-x64,
+# st-0.2.1-mac-arm64, st-0.2.1-windows.exe.
+archives:
+  - formats: [ binary ]
+    name_template: >-
+      st-{{ .Version }}-
+      {{- if eq .Os "darwin" }}mac{{ else }}{{ .Os }}{{ end }}
+      {{- if ne .Os "windows" }}-{{ if eq .Arch "amd64" }}x64{{ else }}{{ .Arch }}{{ end }}{{ end }}
+
+checksum:
+  name_template: sha256sums.txt
+
+# Release notes are written by hand on GitHub.
+changelog:
+  disable: true
