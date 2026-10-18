@@ -1,0 +1,19 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - errorlint
+    - misspell
+    - unconvert
+    - usestdlibvars
+  exclusions:
+    presets:
+      # Unchecked Close, os.Remove, fmt.Print*, ... are fine here.
+      - std-error-handling
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

@@ -63,7 +63,7 @@ func (h *Receiver) receiveUpload(r *http.Request) (int, error) {
 	received := 0
 	for {
 		part, err := mr.NextPart()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -264,5 +264,7 @@ func (h *Sender) info(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(pathInfo)
+	if err := json.NewEncoder(w).Encode(pathInfo); err != nil {
+		fmt.Printf("Failed to send file list: %v\n", err)
+	}
 }

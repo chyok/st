@@ -78,7 +78,9 @@ func multipartBody(t *testing.T, files map[string]string) (*bytes.Buffer, string
 	t.Helper()
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
-	mw.WriteField("other", "ignored")
+	if err := mw.WriteField("other", "ignored"); err != nil {
+		t.Fatal(err)
+	}
 	for name, content := range files {
 		h := make(textproto.MIMEHeader)
 		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="file"; filename=%q`, name))
@@ -87,9 +89,13 @@ func multipartBody(t *testing.T, files map[string]string) (*bytes.Buffer, string
 		if err != nil {
 			t.Fatal(err)
 		}
-		io.WriteString(part, content)
+		if _, err := io.WriteString(part, content); err != nil {
+			t.Fatal(err)
+		}
 	}
-	mw.Close()
+	if err := mw.Close(); err != nil {
+		t.Fatal(err)
+	}
 	return &buf, mw.FormDataContentType()
 }
 

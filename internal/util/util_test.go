@@ -88,7 +88,9 @@ func TestSaveFileDotfile(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	target := filepath.Join(dir, ".bashrc")
-	SaveFile(target, strings.NewReader("1"))
+	if _, err := SaveFile(target, strings.NewReader("1")); err != nil {
+		t.Fatal(err)
+	}
 	got, err := SaveFile(target, strings.NewReader("2"))
 	if err != nil {
 		t.Fatal(err)
@@ -142,7 +144,10 @@ func TestRemovePartFilesCleansInterruptedSave(t *testing.T) {
 		_, err := SaveFile(filepath.Join(dir, "a.txt"), pr)
 		done <- err
 	}()
-	pw.Write([]byte("partial")) // returns once SaveFile is copying into its .part file
+	// Write returns once SaveFile is copying into its .part file.
+	if _, err := pw.Write([]byte("partial")); err != nil {
+		t.Fatal(err)
+	}
 
 	RemovePartFiles()
 	if entries, _ := os.ReadDir(dir); len(entries) != 0 {
