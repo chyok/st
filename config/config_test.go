@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 // Not parallel: it sets the package-level Version.
 func TestCurrentVersion(t *testing.T) {
@@ -28,5 +31,34 @@ func TestParsePort(t *testing.T) {
 		if got, err := ParsePort(in); err == nil {
 			t.Errorf("ParsePort(%q) = %q, want error", in, got)
 		}
+	}
+}
+
+func TestChooseAddresses(t *testing.T) {
+	t.Parallel()
+	wifi := Address{Interface: "en0", IP: "192.168.1.5"}
+	cable := Address{Interface: "en7", IP: "10.0.0.2"}
+
+	cases := []struct {
+		name      string
+		addrs     []Address
+		routed    string
+		wantLocal string
+		wantShown []Address
+	}{
+		{"online picks the routed address", []Address{cable, wifi}, "192.168.1.5", "192.168.1.5", []Address{wifi}},
+		{"offline shows every address", []Address{wifi, cable}, "", "192.168.1.5", []Address{wifi, cable}},
+		{"single address offline", []Address{cable}, "", "10.0.0.2", []Address{cable}},
+		{"route via an unlisted address", []Address{wifi, cable}, "172.16.0.9", "192.168.1.5", []Address{wifi, cable}},
+	}
+	for _, c := range cases {
+		local, shown, err := chooseAddresses(c.addrs, c.routed)
+		if err != nil || local != c.wantLocal || !slices.Equal(shown, c.wantShown) {
+			t.Errorf("%s: got %q, %v, %v; want %q, %v", c.name, local, shown, err, c.wantLocal, c.wantShown)
+		}
+	}
+
+	if _, _, err := chooseAddresses(nil, ""); err == nil {
+		t.Error("no addresses: want error")
 	}
 }

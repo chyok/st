@@ -24,13 +24,23 @@ var (
 )
 
 func printAddress(cfg *config.Config) error {
-	address := fmt.Sprintf("http://%s:%s", cfg.LocalIP, cfg.Port)
-	q, err := qrcode.New(address, qrcode.Low)
-	if err != nil {
-		return err
+	if len(cfg.Addresses) > 1 {
+		fmt.Println("No internet connection, so the right network is unknown.")
+		fmt.Println("Use the address on the same network as the other device:")
 	}
-	fmt.Println(q.ToSmallString(false))
-	fmt.Printf("Server address: %s\n", address)
+	for _, a := range cfg.Addresses {
+		address := fmt.Sprintf("http://%s:%s", a.IP, cfg.Port)
+		q, err := qrcode.New(address, qrcode.Low)
+		if err != nil {
+			return err
+		}
+		fmt.Println(q.ToSmallString(false))
+		if len(cfg.Addresses) > 1 {
+			fmt.Printf("Server address (%s): %s\n\n", a.Interface, address)
+		} else {
+			fmt.Printf("Server address: %s\n", address)
+		}
+	}
 	return nil
 }
 
