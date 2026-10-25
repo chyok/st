@@ -266,3 +266,33 @@ func TestReceiverServesPageAndStatic(t *testing.T) {
 		t.Errorf("static css = %d, want 200", rec.Code)
 	}
 }
+
+func TestDownloadPageEscapesLinks(t *testing.T) {
+	t.Parallel()
+	root := filepath.Join(t.TempDir(), "share")
+	if err := os.MkdirAll(filepath.Join(root, "d?x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "a#1.txt"), []byte("hash"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h := (&Sender{Path: root}).Routes()
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	page := rec.Body.String()
+	for _, link := range []string{`href="/d%3Fx"`, `href="/download/share/a%231.txt"`} {
+		if !strings.Contains(page, link) {
+			t.Errorf("page lacks %s:\n%s", link, page)
+		}
+	}
+
+	// The escaped links must lead to the right places.
+	for path, want := range map[string]int{"/d%3Fx": http.StatusOK, "/download/share/a%231.txt": http.StatusOK} {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if rec.Code != want {
+			t.Errorf("GET %s = %d, want %d", path, rec.Code, want)
+		}
+	}
+}
