@@ -296,3 +296,33 @@ func TestDownloadPageEscapesLinks(t *testing.T) {
 		}
 	}
 }
+
+func TestFilePageLinksToTheFile(t *testing.T) {
+	t.Parallel()
+	root := filepath.Join(t.TempDir(), "share")
+	if err := os.MkdirAll(filepath.Join(root, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(root, "sub", "a.txt")
+	if err := os.WriteFile(file, []byte("a"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, c := range []struct{ shared, page, link string }{
+		{root, "/sub/a.txt", "/download/share/sub/a.txt"}, // file inside a shared folder
+		{file, "/", "/download/a.txt"},                    // a single shared file
+	} {
+		h := (&Sender{Path: c.shared}).Routes()
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, c.page, nil))
+		if !strings.Contains(rec.Body.String(), `href="`+c.link+`"`) {
+			t.Errorf("page %s does not link to %s", c.page, c.link)
+			continue
+		}
+		rec = httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, c.link, nil))
+		if rec.Code != http.StatusOK || rec.Body.String() != "a" {
+			t.Errorf("GET %s = %d %q, want 200 \"a\"", c.link, rec.Code, rec.Body)
+		}
+	}
+}
