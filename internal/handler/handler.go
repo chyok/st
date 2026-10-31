@@ -264,7 +264,7 @@ func (h *Sender) info(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if fileInfo.IsDir() {
-		files, err := util.GetDirFilePaths(currentPath, true)
+		files, err := util.GetDirFilePaths(currentPath)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

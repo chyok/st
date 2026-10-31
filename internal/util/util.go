@@ -28,10 +28,11 @@ func SafeJoin(base, name string) (string, error) {
 	return joined, nil
 }
 
-// GetDirFilePaths lists the regular files under dirPath. Symbolic links are
-// kept only when they resolve to a regular file inside dirPath, because links
-// leading elsewhere cannot be served.
-func GetDirFilePaths(dirPath string, relativeOnly bool) ([]string, error) {
+// GetDirFilePaths lists the regular files under dirPath as slash-separated
+// paths starting with the folder's own name, such as "share/sub/a.txt".
+// Symbolic links are kept only when they resolve to a regular file inside
+// dirPath, because links leading elsewhere cannot be served.
+func GetDirFilePaths(dirPath string) ([]string, error) {
 	root, err := os.OpenRoot(dirPath)
 	if err != nil {
 		return nil, err
@@ -52,11 +53,7 @@ func GetDirFilePaths(dirPath string, relativeOnly bool) ([]string, error) {
 				return nil
 			}
 		}
-		if relativeOnly {
-			filePaths = append(filePaths, path.Join(filepath.Base(dirPath), p))
-		} else {
-			filePaths = append(filePaths, filepath.ToSlash(filepath.Join(dirPath, filepath.FromSlash(p))))
-		}
+		filePaths = append(filePaths, path.Join(filepath.Base(dirPath), p))
 		return nil
 	})
 	if err != nil {

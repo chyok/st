@@ -51,7 +51,7 @@ func TestGetDirFilePathsRelativeKeepsSubdirs(t *testing.T) {
 		}
 	}
 
-	got, err := GetDirFilePaths(root, true)
+	got, err := GetDirFilePaths(root)
 	if err != nil {
 		t.Fatal(err)
 	}
