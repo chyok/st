@@ -16,6 +16,7 @@ import (
 	"path"
 	"path/filepath"
 
+	"github.com/chyok/st/internal/protocol"
 	"github.com/chyok/st/internal/util"
 	"github.com/chyok/st/web"
 )
@@ -258,10 +259,7 @@ func (h *Sender) info(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var pathInfo struct {
-		Type  string   `json:"type"`
-		Paths []string `json:"paths"`
-	}
+	var list protocol.FileList
 
 	if fileInfo.IsDir() {
 		files, err := util.GetDirFilePaths(currentPath)
@@ -269,15 +267,13 @@ func (h *Sender) info(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		pathInfo.Paths = files
-		pathInfo.Type = "dir"
+		list = protocol.FileList{Type: protocol.Dir, Paths: files}
 	} else {
-		pathInfo.Paths = []string{filepath.Base(currentPath)}
-		pathInfo.Type = "file"
+		list = protocol.FileList{Type: protocol.File, Paths: []string{filepath.Base(currentPath)}}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(pathInfo); err != nil {
+	if err := json.NewEncoder(w).Encode(list); err != nil {
 		fmt.Printf("Failed to send file list: %v\n", err)
 	}
 }
