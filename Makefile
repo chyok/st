@@ -1,5 +1,5 @@
 VERSION ?=
-LDFLAGS = -s -w -X github.com/chyok/st/config.Version=$(VERSION)
+LDFLAGS = -s -w -X github.com/chyok/st/internal/config.Version=$(VERSION)
 
 build:
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o st

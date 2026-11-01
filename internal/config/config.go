@@ -34,7 +34,7 @@ func (c *Config) MulticastAddr() string {
 }
 
 // Version is set by release builds with
-// -ldflags "-X github.com/chyok/st/config.Version=<version>".
+// -ldflags "-X github.com/chyok/st/internal/config.Version=<version>".
 var Version string
 
 // CurrentVersion reports Version if it was set at build time, otherwise the

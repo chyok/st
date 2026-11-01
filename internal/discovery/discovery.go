@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/chyok/st/config"
+	"github.com/chyok/st/internal/config"
 )
 
 const separator = "|"

@@ -7,7 +7,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w -X github.com/chyok/st/config.Version={{ .Version }}
+      - -s -w -X github.com/chyok/st/internal/config.Version={{ .Version }}
     goos: [ linux, darwin, windows ]
     goarch: [ amd64, arm64, arm ]
     goarm: [ "7" ]

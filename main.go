@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/chyok/st/config"
+	"github.com/chyok/st/internal/config"
 	"github.com/chyok/st/internal/discovery"
 	"github.com/chyok/st/internal/handler"
 	"github.com/chyok/st/internal/transfer"
