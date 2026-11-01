@@ -1,23 +1,20 @@
 VERSION ?=
-FLAGS = -ldflags "-s -w -X github.com/chyok/st/config.Version=$(VERSION)" -trimpath
-NOCGO := CGO_ENABLED=0
+LDFLAGS = -s -w -X github.com/chyok/st/config.Version=$(VERSION)
 
-ci:: build-all
-	echo "done"
+build:
+	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o st
 
-build::
-	go vet && go fmt
-	${NOCGO} go build ${FLAGS} -o st
+test:
+	go test -race ./...
 
-build-all:: build
-	${NOCGO}  GOOS=linux    GOARCH=amd64  go build ${FLAGS} -o builds/st-linux-x64
-	${NOCGO}  GOOS=linux    GOARCH=arm    go build ${FLAGS} -o builds/st-linux-arm
-	${NOCGO}  GOOS=linux    GOARCH=arm64  go build ${FLAGS} -o builds/st-linux-arm64
-	${NOCGO}  GOOS=darwin   GOARCH=amd64  go build ${FLAGS} -o builds/st-mac-x64
-	${NOCGO}  GOOS=darwin   GOARCH=arm64  go build ${FLAGS} -o builds/st-mac-arm64
-	${NOCGO}  GOOS=windows  GOARCH=amd64  go build ${FLAGS} -o builds/st-windows.exe
-	shasum -a 256 builds/*
+lint:
+	golangci-lint run
 
-clean::
-	rm -f st
-	rm -rf builds
+# Cross-compile every release target into dist/, as releases do.
+snapshot:
+	goreleaser build --snapshot --clean
+
+clean:
+	rm -rf st dist
+
+.PHONY: build test lint snapshot clean

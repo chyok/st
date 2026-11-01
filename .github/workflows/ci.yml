@@ -32,5 +32,10 @@ jobs:
       - name: Vulnerability check
         run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
+      # Builds every release target, as .goreleaser.yaml defines them.
       - name: Build
-        run: make ci
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: build --snapshot --clean
