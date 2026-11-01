@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"path/filepath"
 	"strings"
 
@@ -83,12 +82,7 @@ func (c *Client) downloadFile(remoteAddr, path string) error {
 		return err
 	}
 
-	// Escape each segment so names containing "#", "?", "%" or spaces survive.
-	segments := strings.Split(path, "/")
-	for i, seg := range segments {
-		segments[i] = url.PathEscape(seg)
-	}
-	resp, err := http.Get(fmt.Sprintf("http://%s/download/%s", remoteAddr, strings.Join(segments, "/")))
+	resp, err := http.Get(fmt.Sprintf("http://%s/download/%s", remoteAddr, protocol.EscapePath(path)))
 	if err != nil {
 		return err
 	}

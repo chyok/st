@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/fs"
 	"mime"
-	"net/url"
 	"strings"
 
 	"net/http"
@@ -24,19 +23,9 @@ import (
 var (
 	uploadTmpl   = template.Must(template.New("upload").Parse(web.UploadPage))
 	downloadTmpl = template.Must(template.New("download").
-			Funcs(template.FuncMap{"pathEscape": pathEscape}).
+			Funcs(template.FuncMap{"pathEscape": protocol.EscapePath}).
 			Parse(web.DownloadPage))
 )
-
-// pathEscape percent-encodes each segment of a slash-separated path, so names
-// with "#" or "?" stay part of the path in links.
-func pathEscape(p string) string {
-	segments := strings.Split(p, "/")
-	for i, seg := range segments {
-		segments[i] = url.PathEscape(seg)
-	}
-	return strings.Join(segments, "/")
-}
 
 // Receiver serves the upload page and saves uploaded files under Dir.
 type Receiver struct {
