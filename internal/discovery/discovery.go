@@ -108,7 +108,7 @@ func (n *node) claim(ip string) bool {
 // Run announces this instance and handles other instances' announcements
 // until listening fails. A receiver calls receive for each sender it finds.
 func Run(cfg *config.Config, role Role, receive func(peer Announcement, addr string)) error {
-	group, err := net.ResolveUDPAddr("udp4", cfg.MulticastAddress)
+	group, err := net.ResolveUDPAddr("udp4", cfg.MulticastAddr())
 	if err != nil {
 		return err
 	}

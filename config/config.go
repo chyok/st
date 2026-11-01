@@ -19,10 +19,18 @@ type Config struct {
 	LocalIP string
 	// Addresses are the addresses to show the user, each with a QR code:
 	// just the connected one when online, every candidate when offline.
-	Addresses        []Address
-	MulticastAddress string
-	WildcardAddress  string
-	FilePath         string
+	Addresses []Address
+	FilePath  string
+}
+
+// ListenAddr is where the HTTP server listens: the port on all interfaces.
+func (c *Config) ListenAddr() string {
+	return net.JoinHostPort("0.0.0.0", c.Port)
+}
+
+// MulticastAddr is the group and port that discovery announcements use.
+func (c *Config) MulticastAddr() string {
+	return net.JoinHostPort("224.0.0.169", c.Port)
 }
 
 // Version is set by release builds with
@@ -71,12 +79,10 @@ func New(port string) (*Config, error) {
 		return nil, err
 	}
 	return &Config{
-		DeviceName:       hostname,
-		Port:             port,
-		LocalIP:          localIP,
-		Addresses:        shown,
-		MulticastAddress: fmt.Sprintf("224.0.0.169:%s", port),
-		WildcardAddress:  fmt.Sprintf("0.0.0.0:%s", port),
+		DeviceName: hostname,
+		Port:       port,
+		LocalIP:    localIP,
+		Addresses:  shown,
 	}, nil
 }
 

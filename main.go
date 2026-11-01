@@ -19,10 +19,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var (
-	port string
-)
-
 func printAddress(cfg *config.Config) error {
 	if len(cfg.Addresses) > 1 {
 		fmt.Println("No internet connection, so the right network is unknown.")
@@ -83,7 +79,7 @@ func sendClient(cfg *config.Config) error {
 // rest off and removes the temporary files of interrupted transfers.
 func serve(cfg *config.Config, h http.Handler) error {
 	srv := &http.Server{
-		Addr:              cfg.WildcardAddress,
+		Addr:              cfg.ListenAddr(),
 		Handler:           h,
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       2 * time.Minute,
@@ -120,11 +116,10 @@ func main() {
 			"offering web-based transfer with QR code scanning and automatic device discovery.",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:        "port",
-				Value:       "53333",
-				Usage:       "server port",
-				Aliases:     []string{"p"},
-				Destination: &port,
+				Name:    "port",
+				Value:   "53333",
+				Usage:   "server port",
+				Aliases: []string{"p"},
 			},
 			&cli.BoolFlag{
 				Name:    "version",
@@ -138,13 +133,12 @@ func main() {
 				return nil
 			}
 
-			cfg, err := config.New(port)
+			cfg, err := config.New(c.String("port"))
 			if err != nil {
 				return err
 			}
 			if c.NArg() > 0 {
-				currentPath := filepath.ToSlash(c.Args().Get(0))
-				absPath, err := filepath.Abs(currentPath)
+				absPath, err := filepath.Abs(c.Args().Get(0))
 				if err != nil {
 					return fmt.Errorf("file error: %w", err)
 				}

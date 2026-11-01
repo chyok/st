@@ -30,7 +30,6 @@ func (c *Client) confirm(details, question string) bool {
 
 // ReceiveFiles fetches everything the st sender at remoteAddr is sharing.
 func (c *Client) ReceiveFiles(remoteAddr string) error {
-
 	resp, err := http.Post(fmt.Sprintf("http://%s/", remoteAddr), "", nil)
 	if err != nil {
 		return err

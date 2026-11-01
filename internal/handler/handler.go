@@ -8,12 +8,11 @@ import (
 	"io"
 	"io/fs"
 	"mime"
-	"strings"
-
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/chyok/st/internal/protocol"
 	"github.com/chyok/st/internal/util"
@@ -241,8 +240,7 @@ func (h *Sender) page(w http.ResponseWriter, r *http.Request) {
 
 // info lists the shared paths as JSON so a receiving st can fetch them all.
 func (h *Sender) info(w http.ResponseWriter, r *http.Request) {
-	currentPath := h.Path
-	fileInfo, err := os.Stat(currentPath)
+	fileInfo, err := os.Stat(h.Path)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -251,14 +249,14 @@ func (h *Sender) info(w http.ResponseWriter, r *http.Request) {
 	var list protocol.FileList
 
 	if fileInfo.IsDir() {
-		files, err := util.GetDirFilePaths(currentPath)
+		files, err := util.GetDirFilePaths(h.Path)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		list = protocol.FileList{Type: protocol.Dir, Paths: files}
 	} else {
-		list = protocol.FileList{Type: protocol.File, Paths: []string{filepath.Base(currentPath)}}
+		list = protocol.FileList{Type: protocol.File, Paths: []string{filepath.Base(h.Path)}}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
