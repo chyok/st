@@ -23,7 +23,8 @@ jobs:
       - name: Setup Go environment
         uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
+          # Latest Go, so builds get its security fixes; go.mod sets the minimum.
+          go-version: stable
 
       - name: Test
         run: go test -race ./...
