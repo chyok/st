@@ -116,6 +116,8 @@ func (h *Sender) Routes() http.Handler {
 	return mux
 }
 
+// download serves one shared file as an attachment. Folders are browsed on
+// the page, not here.
 func (h *Sender) download(w http.ResponseWriter, r *http.Request) {
 	fileInfo, err := os.Stat(h.Path)
 	if err != nil {
@@ -123,7 +125,13 @@ func (h *Sender) download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !fileInfo.IsDir() {
-		http.ServeFile(w, r, h.Path)
+		f, err := os.Open(h.Path)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer f.Close()
+		serveAttachment(w, r, f)
 		return
 	}
 
@@ -139,7 +147,32 @@ func (h *Sender) download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer root.Close()
-	http.ServeFileFS(w, r, root.FS(), rootName(strings.TrimPrefix(r.URL.Path, prefix)))
+	f, err := root.Open(rootName(strings.TrimPrefix(r.URL.Path, prefix)))
+	if err != nil {
+		// Missing, or a link leading out of the share.
+		http.NotFound(w, r)
+		return
+	}
+	defer f.Close()
+	serveAttachment(w, r, f)
+}
+
+// serveAttachment sends f for saving rather than display, so shared HTML is
+// never rendered in the browser. Unlike http.ServeFile it does not redirect
+// "index.html" to its folder. Range requests work as usual.
+func serveAttachment(w http.ResponseWriter, r *http.Request, f *os.File) {
+	info, err := f.Stat()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if info.IsDir() {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": info.Name()}))
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	http.ServeContent(w, r, info.Name(), info.ModTime(), f)
 }
 
 // rootName turns a URL path into a name for an os.Root filesystem.

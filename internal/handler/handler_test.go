@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/chyok/st/internal/protocol"
 )
 
 func TestFileServerHandlerDir(t *testing.T) {
@@ -323,6 +326,54 @@ func TestFilePageLinksToTheFile(t *testing.T) {
 		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, c.link, nil))
 		if rec.Code != http.StatusOK || rec.Body.String() != "a" {
 			t.Errorf("GET %s = %d %q, want 200 \"a\"", c.link, rec.Code, rec.Body)
+		}
+	}
+}
+
+func TestDownloadsAreAttachments(t *testing.T) {
+	t.Parallel()
+	root := filepath.Join(t.TempDir(), "share")
+	if err := os.MkdirAll(filepath.Join(root, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, content := range map[string]string{"sub/index.html": "<script>1</script>", "page.html": "<b>hi</b>"} {
+		if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(name)), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h := (&Sender{Path: root}).Routes()
+
+	for path, want := range map[string]string{
+		"/download/share/sub/index.html": "<script>1</script>", // no redirect to the folder
+		"/download/share/page.html":      "<b>hi</b>",
+	} {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		disp := rec.Header().Get("Content-Disposition")
+		if rec.Code != http.StatusOK || rec.Body.String() != want || !strings.HasPrefix(disp, "attachment") {
+			t.Errorf("GET %s = %d %q, Content-Disposition %q; want 200 %q as attachment", path, rec.Code, rec.Body, disp, want)
+		}
+	}
+	// Folders are browsed on the page, never served under /download/.
+	for _, path := range []string{"/download/share", "/download/share/sub", "/download/share/sub/"} {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("GET %s = %d, want 404", path, rec.Code)
+		}
+	}
+
+	// Single shared files, including one named index.html.
+	for _, name := range []string{"index.html", "报告 v2.txt"} {
+		single := filepath.Join(t.TempDir(), name)
+		if err := os.WriteFile(single, []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		rec := httptest.NewRecorder()
+		(&Sender{Path: single}).Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/download/"+protocol.EscapePath(name), nil))
+		_, params, err := mime.ParseMediaType(rec.Header().Get("Content-Disposition"))
+		if rec.Code != http.StatusOK || err != nil || params["filename"] != name {
+			t.Errorf("single %s = %d, Content-Disposition %q", name, rec.Code, rec.Header().Get("Content-Disposition"))
 		}
 	}
 }
