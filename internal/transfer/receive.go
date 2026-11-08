@@ -13,6 +13,9 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
+// maxListed is how many files of a folder the download prompt names.
+const maxListed = 20
+
 // Client fetches files from other st instances found by discovery.
 type Client struct {
 	// Dir is where received files are saved.
@@ -48,7 +51,11 @@ func (c *Client) ReceiveFiles(remoteAddr string) error {
 	if list.Type == protocol.Dir {
 		var details strings.Builder
 		fmt.Fprintf(&details, "\nFound sender at %s offering a directory with %d files:\n", remoteAddr, len(list.Paths))
-		for _, path := range list.Paths {
+		for i, path := range list.Paths {
+			if i == maxListed {
+				fmt.Fprintf(&details, "... and %d more\n", len(list.Paths)-maxListed)
+				break
+			}
 			fmt.Fprintf(&details, "- %s\n", path)
 		}
 		if !c.confirm(details.String(), "Do you want to download the entire directory? [y/n] ") {
