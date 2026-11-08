@@ -33,7 +33,8 @@ Received files are saved in the current directory. An existing file is never ove
 - Automatic discovery of hosts within a local network.
 - Downloads are confirmed on the receiving device before they start.
 - Only the shared file or folder is served: symbolic links pointing outside it are not followed.
-- Interrupted transfers leave no partial files behind.
+- Shared files are always offered as downloads, never opened as web pages.
+- Files are saved only once complete; a transfer stopped with Ctrl+C leaves no partial file behind.
 
 ## Installation
 
