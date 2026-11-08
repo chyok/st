@@ -61,22 +61,31 @@ func (c *Client) ReceiveFiles(remoteAddr string) error {
 		if !c.confirm(details.String(), "Do you want to download the entire directory? [y/n] ") {
 			return nil
 		}
-		for _, path := range list.Paths {
-			if err := c.downloadFile(remoteAddr, path); err != nil {
-				return err
-			}
+		return c.downloadAll(remoteAddr, list.Paths)
+	}
+
+	if len(list.Paths) != 1 {
+		return fmt.Errorf("unexpected number of paths: %d", len(list.Paths))
+	}
+	details := fmt.Sprintf("\nFound sender at %s offering file: %s\n", remoteAddr, list.Paths[0])
+	if !c.confirm(details, "Download it? [y/n] ") {
+		return nil
+	}
+	return c.downloadFile(remoteAddr, list.Paths[0])
+}
+
+// downloadAll fetches every path, carrying on past files that fail, and
+// reports how many did.
+func (c *Client) downloadAll(remoteAddr string, paths []string) error {
+	failed := 0
+	for _, path := range paths {
+		if err := c.downloadFile(remoteAddr, path); err != nil {
+			fmt.Printf("[❌] Download [%s] failed: %v\n", path, err)
+			failed++
 		}
-	} else {
-		if len(list.Paths) != 1 {
-			return fmt.Errorf("unexpected number of paths: %d", len(list.Paths))
-		}
-		details := fmt.Sprintf("\nFound sender at %s offering file: %s\n", remoteAddr, list.Paths[0])
-		if !c.confirm(details, "Download it? [y/n] ") {
-			return nil
-		}
-		if err := c.downloadFile(remoteAddr, list.Paths[0]); err != nil {
-			return err
-		}
+	}
+	if failed > 0 {
+		return fmt.Errorf("%d of %d files failed", failed, len(paths))
 	}
 	return nil
 }

@@ -122,3 +122,26 @@ func TestPromptListsAtMostMaxListedFiles(t *testing.T) {
 		t.Errorf("prompt should list %d files then \"... and 5 more\":\n%s", maxListed, shown)
 	}
 }
+
+func TestFolderDownloadContinuesAfterAFailure(t *testing.T) {
+	t.Parallel()
+	paths := []string{"share/a.txt", "share/broken.txt", "share/c.txt"}
+	addr := fakeSender(t, paths, func(w http.ResponseWriter, path string) {
+		if path == "share/broken.txt" {
+			http.NotFound(w, nil)
+			return
+		}
+		fmt.Fprint(w, path)
+	})
+	dir := t.TempDir()
+
+	err := (&Client{Dir: dir, Confirm: answer(true)}).ReceiveFiles(addr)
+	if err == nil || !strings.Contains(err.Error(), "1 of 3") {
+		t.Errorf("err = %v, want it to report 1 of 3 files failed", err)
+	}
+	for _, p := range []string{"share/a.txt", "share/c.txt"} {
+		if got, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(p))); err != nil || string(got) != p {
+			t.Errorf("%s = %q, %v; want it downloaded", p, got, err)
+		}
+	}
+}
