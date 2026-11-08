@@ -111,14 +111,20 @@
       formData.append("file", file, file.webkitRelativePath || file.name);
       var ajax = new XMLHttpRequest();
       ajax.upload.addEventListener('progress', function(e) {
-        var percent = Math.round((e.loaded / e.total) * 100);
-        progressBar.style.width = percent + '%';
+        if (e.lengthComputable) {
+          progressBar.style.width = Math.round((e.loaded / e.total) * 100) + '%';
+        }
       });
+      function fail(reason) {
+        progressBar.style.width = '100%';
+        progressBar.className += ' progress-bar-danger';
+        progressBar.textContent = 'Failed: ' + reason;
+      }
+      ajax.addEventListener('error', function() { fail('network error'); });
+      ajax.addEventListener('abort', function() { fail('cancelled'); });
       ajax.addEventListener('load', function() {
         if (ajax.status !== 200) {
-          progressBar.style.width = '100%';
-          progressBar.className += ' progress-bar-danger';
-          progressBar.textContent = 'Failed: ' + ajax.responseText;
+          fail(ajax.responseText);
           return;
         }
         uploads.removeChild(row);
